@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 import osmnx as ox
 import geopandas as gpd
+
+
 import gc
 
 ox.config(timeout=3600)
@@ -54,3 +56,28 @@ brighton_cycle = None
 # cleaning env
 
 gc.collect()
+
+# getting the data by tag for highways that can accomodate cycling, 
+# from osm tags, those are: 
+
+# highway=*
+
+tags_cycle = {
+  "highway" : ["cycleway","path","primary","secondary","tertiary","unclassified"
+                ,"residential","primary_link","secondary_link","tertiary_link"]
+  ,"cycleway": True
+  ,"bicycle" : ["yes", "designated","permissive","destination","dismount"]
+  ,"surface":True
+}
+
+brighton_custom_cycle=ox.geometries_from_bbox(51.1035
+                                              ,50.7829
+                                              ,0.1071
+                                              ,-0.7443
+                                              ,tags = tags_cycle)
+
+brighton_custom_cycle=gpd.GeoDataFrame(brighton_custom_cycle)
+
+brighton_custom_cycle.
+
+# ox.(brighton_custom_cycle,"data/brighton_custom_cycle.gpkg")

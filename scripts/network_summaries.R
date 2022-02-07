@@ -1,4 +1,4 @@
-# function
+# function ####
 
 or <- function(x,y) x | y
 
@@ -23,7 +23,6 @@ node_density <- function(nodes, areas) {
   areas#[,.(nodes_cycle,area,nodes_cylce_dens)]
   
 }
-
 
 node_density_map <- function(areas, bbox_areas) {
   cycle_node_density_map <- areas %>% 
@@ -52,7 +51,7 @@ node_density_map <- function(areas, bbox_areas) {
 }
 
 
-# London network summary
+# London network summary ####
 gc()
 
 # source(msoa.R)
@@ -229,6 +228,7 @@ brighton_edges_density_map <- brighton_zones %>% st_as_sf() %>% tm_shape(bbox = 
 
 tmap_save(brighton_edges_density_map,paste0(image_folder,"brighton_edges_dens_map",".pdf"))
 
+
 brighton_edges_overlay_map <- tm_shape(brighton_edges_dt %>% st_as_sf()) + 
   tm_lines(col = "black"
           ,lwd = 0.3
@@ -252,3 +252,6 @@ brighton_edges_overlay_map <- tm_shape(brighton_edges_dt %>% st_as_sf()) +
 
 tmap_save(brighton_edges_overlay_map,"images/brighton_edges_overlay_map.pdf")
 
+
+
+brighton_flows <- flows[workplace %in% brighton_zones$geo_code | residence %in% brighton_zones$geo_code]
