@@ -58,6 +58,10 @@ dodgr_flowmap <- function (net, bbox = NULL, linescale = 1) {
 
 #### Constructing the network and working with the flows in Brighton ####
 # dodgr package
+## Reading files for brithgon
+brighton_edges_dt <- st_read("data/brighton_cycle.gpkg", layer = "edges") %>% as.data.table()
+brighton_edges_dt[, c("from","to")] <- 
+  brighton_edges_dt[, lapply(.SD, as.character), .SDcols = c("from","to")]
 
 brighton_network <- dodgr::weight_streetnet(brighton_edges_dt %>% st_as_sf()
                                             ,wt_profile = "bicycle")
@@ -201,6 +205,8 @@ plot(brighton_euclid_dist,brighton_dists
 lines(1:max(brighton_euclid_dist)
       ,col = "darkred")
 
+
+###
 ### CPP routing ####
 
 # this creates a logical matrix of what node belongs to what msoa
@@ -358,6 +364,8 @@ setnames(london_edges
 
 london_edges <- london_edges %>% as.data.table()
 
+london_edges <- fread("london_edges.csv")
+
 # london_edges %>% fwrite(file = "london_edges.csv")
 
 london_nodes <- rbind(london_edges[,.(node_ID = from_num,X = res.V1,Y = res.V2)]
@@ -409,6 +417,7 @@ dist_matrix_london %>%
 #               ,nrows = 100)
 
 #### The euclidean distance between msoas in London #### 
+
 london_dist_test <- st_distance(central_centroid %>% st_transform(27700)
                              ,central_centroid %>% st_transform(27700) 
                              ) %>%
@@ -423,7 +432,8 @@ london_central_msoa_dist <- st_distance(central_centroid
 # (london_dist_test-london_central_msoa_dist) %>% hist()
 
 (dist_matrix_london/london_central_msoa_dist) %>% hist()
-
+# the difference looks like a consequence of rounding and is 
+# very small
 
 # This part looks at the corner cases
 # where the shortest path was shorter than the
@@ -517,6 +527,8 @@ london_central_roads <- london_edges_dt[pred,]
 
 london_central_roads %>% dim()
 
+central_centroid[4,]
+
 path_1_map <- tm_shape(thames, bbox = path_1 %>% st_bbox()) + tm_lines(col = "darkblue") + 
   tm_shape(london_central_roads %>% st_as_sf()) + tm_lines(col = "grey"
                                                            ,lwd = 0.5) +
@@ -525,7 +537,7 @@ path_1_map <- tm_shape(thames, bbox = path_1 %>% st_bbox()) + tm_lines(col = "da
                                        ,size = 0.25) +
   tm_shape(central_centroid[4,]) + tm_dots(col ="red"
                                            ,size = 0.25) +
-  tm_layout(main.title = "Shortest paths from E09000007"
+  tm_layout(main.title = "Shortest paths from Camden 019"
             ,main.title.size = 1) + 
   tm_scale_bar(breaks = c(0,2.5,5))
 
@@ -533,6 +545,18 @@ tmap_save(
   path_1_map
   ,"images/shortest_paths_E09000007.pdf"
 )
+
+
+#### Routing across all of london ####
+
+
+#### routing #### 
+
+centroid_nodes_london <- list.load("RC_outputs/241556.undefined/centroid_nodes.rds")
+
+london_msoa$graph_id <- centroid_nodes_london
+
+
 
 
 #### functions ####
@@ -581,7 +605,7 @@ par_st_dist <- function(x,y,cores = 1,tolerance = 100, coords = NULL) {
 
 
 find_nearest_node_on_graph <- function(graph, points_data = NULL, n_cores = 1) {
-  if(is.null(points_data)) stop("Provide spatial points to link to the network.")
+  if(is.null(points_data)) stop("Provide sf spatial points to link to the network.")
   
   points_dist <- graph$coords %>% 
     st_as_sf(coords = c("X","Y"), crs = 4326) %>% 
@@ -624,7 +648,7 @@ get_lines <- function(from, to = NULL, by_element = TRUE) {
     #         ,.combine = c
     #         ,.final = st_as_sf) %do% {
               from %>%
-                as.matrix(ncol = 2, byrow = FALSE) %>%
+                as.matrix(ncol = 2, byrow = TRUE) %>%
                 st_linestring(dim = "XY") 
     # %>%
     #             st_sfc(crs = 4326)

@@ -197,14 +197,9 @@ distances <- foreach(i = 1:nrow(flows_groups)
                      }
 stopImplicitCluster()
 
-routing_distances
-
-
-distances %>% length()
-summary(distances)
-
 bike_flows_density <- density(distances
-                              ,weights = (flows_london$bike/sum(flows_london$bike)))
+                              ,weights = (flows_london$bike/sum(flows_london$bike))
+                              )
 
 print(bike_flows_density)
 
@@ -212,17 +207,19 @@ plot(bike_flows_density
      ,xlab = "distance, m"
      ,ylab = "density"
      ,main = "distribution of bike trip distances in London"
-     ,lwd = 2)
+     ,lwd = 2
+     ,family = "A"
+     )
 abline(v=15000
        ,col = "navyblue"
        ,lwd = 2)
 
-?density
 
 # the matrix of all euclidean distances between msoas. 
 london_msoa_dist <- london_msoa %>% 
-   st_as_sf() %>% st_distance()
+   st_as_sf() %>% 
+   st_distance()
 
-london_msoa_dist %>% dim()
+london_msoa_dist %>% 
+   dim()
 
-### routing : 

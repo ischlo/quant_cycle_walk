@@ -238,7 +238,7 @@ mean_trip_time_matrix <- trip_time_msoa %>%
 
 # mean_trip_time_matrix %>% view
 
-(mean_trip_time_matrix[,2:158]/dist_matrix) %>% hist()
+(dist_matrix/mean_trip_time_matrix[,2:158]) %>% hist()
 
 max(mean_trip_time_matrix[,2:158])
 
