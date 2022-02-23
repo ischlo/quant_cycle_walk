@@ -117,11 +117,7 @@ head(london_edges_dt,5000) %>% st_as_sf() %>% qtm()
 #                                    ,node_key = "osmid")
 
 #### London Network
-
-?with
-
-
-# Next steps:
+# Next steps : 
 #   summary stats : density of nodes and length of streets per msoa
 #   msoa centroids and routing between them
 
