@@ -2,8 +2,6 @@ Repository description
 ================
 Ivann Schlosser
 
-    ## [1] "/Users/ivann/Desktop/CASA"
-
 # Folder structure
 
 The folder `scripts` contains all the necessary code to reproduce the
@@ -17,5 +15,4 @@ In order to set up and run this code blablabla
 
 The images illustrate blablabla
 
-![Brighton
-distances](/Users/ivann/Desktop/CASA/images/light/shortest_paths_camden019.jpg)
+![Brighton distances](images/light/shortest_paths_camden019.jpg)
