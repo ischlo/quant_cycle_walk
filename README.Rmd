@@ -1,0 +1,24 @@
+---
+title: "description_git"
+author: "Ivann Schlosser"
+dev: "png"
+fig_caption: true
+output: html_document
+---
+
+
+
+# Folder structure
+
+The folder `scripts` contains all the necessary code to reproduce the results of the work on cycling networks for London.
+
+
+# Code 
+
+In order to set up and run this code blablabla
+
+
+# Images
+
+
+The images illustrate blablabla
