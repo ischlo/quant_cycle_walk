@@ -1,21 +1,24 @@
 library(bikedata)
 gc()
+
 #### Here some real world cycle data is imported and explored
+# witht the use of the bike data package: 
+# https://docs.ropensci.org/bikedata/articles/bikedata.html#downloading-data 
 
 bike_cities()
 
+# this creates locally a temporary database and allows sending queries.
 bikedb <- file.path(tempdir(), "bikedb.sqlite")
 dl_bikedata(city = "lo",dates = 2019,data_dir = tempdir())
 store_bikedata(city = "lo", bikedb = bikedb, quiet = FALSE)
-
 db <- dplyr::src_sqlite(bikedb, create=F)
 dplyr::src_tbls(db)
 
+# indexing the data 
 index_bikedata_db(bikedb = bikedb)
 bike_db_totals(bikedb = bikedb)
 
 # stations:
-
 stations <- bike_stations(bikedb = bikedb) %>% 
   st_as_sf(coords = c("longitude","latitude"), remove = FALSE, crs = 4326)
 
@@ -30,8 +33,6 @@ predicate <- stations %>% st_intersects(london_msoa %>% st_as_sf()
 # tmap_mode("view")
 # stations[332,] %>% qtm() + qtm(london_msoa %>% st_as_sf())
 # 
-# 
-# 
 # which(predicate %>% 
 #   as.numeric() %>% is.na())
 #   
@@ -43,19 +44,23 @@ central_centroid <- london_centroids[predicate %>%
                                        as.numeric() %>% 
                                        unique() %>% sort(),]
 
+# assign the index of the msoa to each bike station
 stations$msoa <- predicate %>% as.numeric()
-
+# 1 stations is outside the msoa polygons because it's near the river.
+# remove it. 
 stations <- stations %>% drop_na(msoa)
 
 match(bike_trips$start_station_id,stations$stn_id)
 
-# loading the number of trips for all the existing pars of msoa in the database
+# loading the number of trips for all the existing pairs of msoa in the database
 # a bit time consuming
 bike_trips <- bike_tripmat(bikedb = bikedb
                            ,start_time = 8
                            ,end_time = 10
                            ,long = TRUE)
 
+# done with dplyr, but data.table could work to. 
+# assign to every orig-dest pairs a msoa id. 
 bike_trips <- bike_trips %>% merge(stations[,c("stn_id","msoa")] # %>% st_drop_geometry()
                                    ,by.x = "start_station_id", by.y = "stn_id")
 bike_trips <- bike_trips %>% mutate(start_msoa = msoa,msoa =NULL)
@@ -64,25 +69,29 @@ bike_trips <- bike_trips %>% merge(stations[,c("stn_id","msoa")] # %>% st_drop_g
                                    ,by.x = "end_station_id", by.y = "stn_id")
 bike_trips <- bike_trips %>% mutate(end_msoa = msoa,msoa =NULL)
 
+# group the trips and find the number of travels between msoas.
 bike_trips <- bike_trips %>%
   group_by(start_msoa,end_msoa) %>%
   summarise(trips = sum(numtrips))
 
-bike_trips <- bike_trips %>% drop_na()
-bike_trips$start_msoa %>% unique() %>% length()
+bike_trips <- bike_trips %>% 
+  drop_na()
 
+bike_trips$start_msoa %>% unique() %>% length()
 
 #### data cleaning ####
 
 # bike_trips
 
 #### ####
+# making a flows matrix
 bike_trips_mat <- bike_trips %>% acast(start_msoa ~ end_msoa, value.var = "trips")
 
+# checking that the dimensions of matrices correspond.
 bike_trips_mat %>% dim()
-
 london_central_msoa_dist %>% dim()
 
+# melting the two matrices together. 
 bike_dist <- cbind(dist_matrix_london %>% melt(value.name = "distance")
                    ,bike_trips_mat %>% melt(value.name = "trips")) %>% 
   as.data.table()
@@ -105,12 +114,12 @@ abline(v = london_msoa_typ_dist
        ,col = "darkred"
        ,lwd = 2)
 
-plot(dist_matrix_london[which(dist_matrix_london > 0,arr.ind = TRUE)]
-     ,bike_trips_mat[which(dist_matrix_london > 0,arr.ind = TRUE)]
-     ,ylab = "# bike trips"
-     ,xlab = "distance, m"
-     #,log = "xy"
-     )
+# plot(dist_matrix_london[which(dist_matrix_london > 0,arr.ind = TRUE)]
+#      ,bike_trips_mat[which(dist_matrix_london > 0,arr.ind = TRUE)]
+#      ,ylab = "# bike trips"
+#      ,xlab = "distance, m"
+#      #,log = "xy"
+#      )
 
 #### trips duration ####
 
@@ -229,18 +238,23 @@ mean_trip_time_matrix <- trip_time_msoa %>%
         ,value.var = "mean_duration"
         ,fill = 0) %>% as.matrix()
 
-# mean_trip_time_matrix %>% dim
-# # matrix of median trip times
-# med_trip_time_matrix <- med_trip_time_msoa %>% 
-#   dcast(start_msoa ~ end_msoa
-#         ,value.var = "trip_duration"
-#         ,fill = 0) %>% as.matrix()
+mean_trip_time_matrix %>% dim
 
+# # matrix of median trip times
+# med_trip_time_matrix <- trip_time_msoa %>%
+#   dcast(start_msoa ~ end_msoa
+#         ,value.var = "med_duration"
+#         ,fill = 0) %>% as.matrix()
+# 
+# med_trip_time_matrix %>% dim()
 # mean_trip_time_matrix %>% view
 
-(dist_matrix/mean_trip_time_matrix[,2:158]) %>% hist()
+dist_matrix %>% dim
 
-max(mean_trip_time_matrix[,2:158])
+# dividing distance by time and multiplying by 3.6 allows to see average speed in km/h
+((dist_matrix/mean_trip_time_matrix[,2:158])*3.6) %>% hist()
+
+(mean_trip_time_matrix[,2:158])
 
 outliers_index <- which(mean_trip_time_matrix[,2:158]>5e4,arr.ind = TRUE)
 
@@ -257,10 +271,17 @@ outliers_lines <- foreach(i = 1:nrow(outliers_index)
 i <- 9
 x <- paths_centroid_london[[outliers_index[i,1]]][[outliers_index[i,2]]]
 
-path_corner_case <- coords[match(x,node_ID),.(X,Y)] %>%
-  get_lines(to = NULL) %>%
-  st_sfc(crs = 4326)
-
+registerDoParallel(cores = 3)
+path_corner_case <- foreach(i = 1:nrow(outliers_index)
+                            ,.combine = c
+                            ,.final = st_as_sf
+                            ) %dopar% {
+                              x <- paths_centroid_london[[outliers_index[i,1]]][[outliers_index[i,2]]]
+                              coords[match(x,node_ID),.(X,Y)] %>%
+                                    get_lines(to = NULL) %>%
+                                    st_sfc(crs = 4326)
+                              }
+stopImplicitCluster()
 
 # london_msoa %>% st_as_sf() %>% qtm(fill.alpha = 0.3)
 # 
@@ -268,18 +289,23 @@ path_corner_case <- coords[match(x,node_ID),.(X,Y)] %>%
 
 # path_corner_case %>% st_length()
 # corner_cases_lines[3,] %>% st_length()
+tmap_mode("view")
+i <- 1
+path_corner_case[i,] %>% qtm(lines.col = "red") + qtm(outliers_lines[i,]
+                                                      ,lines.col = "black")
 
-path_corner_case %>% qtm(col = "red") + qtm(outliers_lines[i,]
-                                            ,col = "black") +
+path_corner_case %>% qtm(lines.col = "red") + qtm(outliers_lines
+                                                  ,lines.col = "black")
   qtm(central_centroid %>% st_as_sf())
 
-
 plot(
-london_central_msoa_dist[outliers_index] 
-,mean_trip_time_matrix[outliers_index]
+  london_central_msoa_dist[outliers_index] 
+  ,mean_trip_time_matrix[outliers_index]
 )
-#### MSOA vs LSOA vs OA ####
 
+
+#### MSOA vs LSOA vs OA ####
+# illustrate the differences between various spatial subdivisions. 
 
 
 

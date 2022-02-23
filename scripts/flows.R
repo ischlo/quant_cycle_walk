@@ -14,7 +14,7 @@ flows_general <- merge(flows_general,england_centroids[,.(geo_code,geom)]
 
 flows_general[,"distance"] <- flows[,sf::st_distance(geom.x,geom.y,by_element = TRUE)]
 
-flows_general <- NULL
+# flows_general <- NULL
 
 flows_general %>% dim()
 flows_general %>% head()
@@ -179,10 +179,16 @@ flows_london_matrix <- dcast(flows_london
                              ,value.var = "bike"
                              ,fill = 0)
 
-# flow_matrix_col <- flows_london_matrix %>% colnames() %>% as.numeric() %>% na.exclude()
-flows_groups <- flows_london %>% group_by(to_id) %>% summarise(from = list(from_id))
 
-flows_groups$to_id
+# flow_matrix_col <- flows_london_matrix %>% colnames() %>% as.numeric() %>% na.exclude()
+
+# grouping to optimize the computation.
+
+flows_groups <- flows_london %>% 
+   group_by(to_id) %>% 
+   summarise(from = list(from_id))
+
+# flows_groups$to_id
 
 #i <- 980
 
@@ -203,23 +209,26 @@ bike_flows_density <- density(distances
 
 print(bike_flows_density)
 
+# saving the plot of the density of trips 
+pdf("images/bike_flows_density.pdf"
+    ,height = 5.83
+    ,width = 8.27)
 plot(bike_flows_density
      ,xlab = "distance, m"
      ,ylab = "density"
      ,main = "distribution of bike trip distances in London"
      ,lwd = 2
-     ,family = "A"
+    # ,family = "A"
      )
-abline(v=15000
-       ,col = "navyblue"
-       ,lwd = 2)
+# abline(v=15000
+#        ,col = "navyblue"
+#        ,lwd = 2)
+dev.off()
 
-
-# the matrix of all euclidean distances between msoas. 
+# the matrix of all euclidean distances between msoas
 london_msoa_dist <- london_msoa %>% 
    st_as_sf() %>% 
-   st_distance()
+   st_distance() %>% 
+   set_units(NULL)
 
-london_msoa_dist %>% 
-   dim()
-
+london_msoa_dist %>% dim
