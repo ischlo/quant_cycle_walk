@@ -1,0 +1,36 @@
+---
+title: "Repository description"
+author: "Ivann Schlosser"
+dev: "png"
+fig_caption: true
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+```
+
+# Folder structure
+
+The folder `scripts` contains all the necessary code to reproduce the results of the work on cycling networks for London.
+
+# Code 
+
+
+```{r eval=FALSE,echo=FALSE,include=TRUE}
+
+source("scripts/functions.R")
+
+```
+
+
+
+# Images
+
+The images illustrate the number of users by transport mode at MSOA level. 
+
+
+![Transport usage distribution](images/light/transport_use_map.jpg)
+
+![Brighton distances](images/light/shortest_paths_camden019.jpg)
