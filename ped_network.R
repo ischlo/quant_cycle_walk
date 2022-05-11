@@ -1,11 +1,11 @@
 #### Libs ####
-library(osmar)
-library(osmdata)
+# library(osmar)
+# library(osmdata)
 library(sf)
 library(tmap)
 library(tmaptools)
 library(tidyverse)
-library(httr)
+# library(httr)
 library(igraph)
 library(tidygraph)
 library(PROJ)
@@ -14,9 +14,20 @@ library(data.table)
 library(pct)
 library(dodgr)
 library(foreach)
+library(doParallel)
 library(profvis)
 library(ggplot2)
-library(multiplex)
+library(rbenchmark)
+library(data.table)
+library(dodgr)
+library(RcppParallel)
+library(cppRouting)
+library(units)
+library(reshape2)
+# library(multiplex)
+# library(units)
+
+options(max.print = 50)
 
 # useBasiliskEnv(path.expand("~/.cache/basilisk/1.2.1/velociraptor-1.0.0/env"))
 
@@ -26,8 +37,6 @@ library(multiplex)
 
 packageVersion("PROJ")
 remotes::install_github("luukvdmeer/sfnetworks", "fix-onattach")
-
-
 
 ##### 
 
@@ -61,6 +70,13 @@ brighton_edges_dt[, c("from","to")] <-
 
 brighton_edges_dt %>% st_as_sf()
 
+# brighton_network <- sfnetworks::sfnetwork(nodes = brighton_nodes_dt
+#                                           ,edges = brighton_edges_dt
+#                                           ,node_key = "osmid"
+#                                           ,directed = FALSE
+#                                           ,edges_as_lines = TRUE
+#                                           )
+
 # summary statistics of london cycle network from osmnx ####
 
 london_nodes_dt %>% colnames()
@@ -73,31 +89,25 @@ head(london_edges_dt,5000) %>% st_as_sf() %>% qtm()
 ## attempt to use data.tables
 
 # did not run yet
-london_network <- sfnetworks::sfnetwork(nodes = london_nodes_dt
-                                        ,edges = london_edges_dt
-                                        ,node_key = "osmid"
-                                        ,directed = FALSE
-                                        ,edges_as_lines = TRUE
-                                        )
+# london_network <- sfnetworks::sfnetwork(nodes = london_nodes_dt
+#                                         ,edges = london_edges_dt
+#                                         ,node_key = "osmid"
+#                                         ,directed = FALSE
+#                                         ,edges_as_lines = TRUE
+#                                         )
 
 # with tbl graph 
 
-london_tibble_network <- tbl_graph(nodes = london_nodes_dt
-                                   ,edges = london_edges_dt
-                                   ,node_key = "osmid")
+# london_tibble_network <- tbl_graph(nodes = london_nodes_dt
+#                                    ,edges = london_edges_dt
+#                                    ,node_key = "osmid")
+
+#### London Network
 
 
-edges <- NULL
 
-ggplot() +
-  geom_sf(data = london_tibble_network %>% activate(edges) %>% as_tibble() %>% st_as_sf())
-
-#### 
 
 # Next steps:
 #   summary stats : density of nodes and length of streets per msoa
 #   msoa centroids and routing between them
-
-
-
 

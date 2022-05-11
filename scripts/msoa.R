@@ -9,11 +9,11 @@ st_layers(file.path(data_folder,"bdline_gb.gpkg"))
 
 os_bound <- sf::st_read(file.path(data_folder,"bdline_gb.gpkg"))
 
-os_bound
-
-postcode_la <- fread(file.path(data_folder,"postcodetola.csv"))
-
-postcode_la %>% head()
+# postcode_la <- fread(file.path(data_folder,"postcodetola.csv"))
+# 
+# postcode_la %>% head()
+# 
+# postcode_la <- NULL
 
 gb_sectors <- sf::st_read(file.path(data_folder,"Distribution","Sectors.shp"))
 
@@ -32,6 +32,10 @@ england_zones <- get_pct(purpose = "commute"
 england_zones <- england_zones %>% st_make_valid()
 
 england_zones <-england_zones %>% as.data.table()
+
+england_zones %>% colnames()
+
+england_centroids <- england_zones[,.(geo_code,geo_name,geom = st_centroid(geometry))]
 
 # brighton 
 
@@ -72,6 +76,7 @@ typ_dist_hist <- london_zones[,typ_dist] %>% hist(breaks = 100
                                                   ,xlab = "meters"
                                                   ,ylab = "density"
                                                   ,freq = FALSE)
+
 tmap_mode("plot")
 
 transport_use_map <- london_zones %>% st_as_sf() %>% tm_shape() + 
