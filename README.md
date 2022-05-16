@@ -13,6 +13,11 @@ In order to set up and run this code blablabla
 
 # Images
 
-The images illustrate blablabla
+The images illustrate the number of users by transport mode at MSOA
+level.
+
+![Transport usage distribution](images/light/transport_use_map.jpg)
 
 ![Brighton distances](images/light/shortest_paths_camden019.jpg)
+
+The images illustrate blablabla
