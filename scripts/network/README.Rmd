@@ -1,0 +1,8 @@
+---
+title: "Downloading the network"
+dev: "png"
+fig_caption: true
+output: github_document
+---
+
+The network is downloaded through a python script with the `osmnx` package.
