@@ -3,17 +3,14 @@
 flows_general <- data.table::fread(file.path(data_folder,"wu03ew_msoa.csv"))
 
 # the order of the operation in the following lines is very inefficient, REDO
-
-flows_general <- merge(flows_general,england_centroids[,.(geo_code,geom)]
-                       ,by.x = "Area of residence"
-                       ,by.y = "geo_code")
-
-flows_general <- merge(flows_general,england_centroids[,.(geo_code,geom)]
-                       ,by.x = "Area of workplace"
-                       ,by.y = "geo_code")
-
-flows_general[,"distance"] <- flows[,sf::st_distance(geom.x,geom.y,by_element = TRUE)]
-
+# flows_general <- merge(flows_general,england_centroids[,.(geo_code,geom)]
+#                        ,by.x = "Area of residence"
+#                        ,by.y = "geo_code")
+# 
+# flows_general <- merge(flows_general,england_centroids[,.(geo_code,geom)]
+#                        ,by.x = "Area of workplace"
+#                        ,by.y = "geo_code")
+# flows_general[,"distance"] <- flows[,sf::st_distance(geom.x,geom.y,by_element = TRUE)]
 # flows_general <- NULL
 
 flows_general %>% dim()
@@ -32,17 +29,12 @@ population_active_travel <- flows_active[,sum(bike+foot)]
 
 population_concerned <- population_active_travel/population
 
-head(flows_graph)
+flows_general <- flows_general[,.(residence = `Area of residence`
+                      ,workplace = `Area of workplace`
+                      ,total = `All categories: Method of travel to work`
+                      ,bike = `Bicycle`
+                      ,foot = `On foot`)]
 
-# flows_active <- flows[,.(residence = `Area of residence`
-#                       ,workplace = `Area of workplace`
-#                       ,total = `All categories: Method of travel to work`
-#                       ,bike = `Bicycle`
-#                       ,foot = `On foot`
-#                       ,geom_from = geom.x
-#                       ,geom_to = geom.y
-#                       ,distance = distance)]
-#
 # flows_active <- flows_active[bike != 0 | foot != 0] 
 # 
 # flows_active %>% dim()
@@ -54,10 +46,8 @@ head(flows_graph)
 # turning metres into kilometres
 flows[,"distance"] <- flows[,as.numeric(distance)/1000]
 
-
 den_foot <- density(flows[,distance]
                     ,weights = flows[,foot/sum(foot)])
-
 den_bike <- density(flows[,distance]
                      ,weights = flows[,bike/sum(bike)])
 
@@ -179,17 +169,14 @@ flows_london_matrix <- dcast(flows_london
                              ,value.var = "bike"
                              ,fill = 0)
 
-
 # flow_matrix_col <- flows_london_matrix %>% colnames() %>% as.numeric() %>% na.exclude()
 
 # grouping to optimize the computation.
-
 flows_groups <- flows_london %>% 
    group_by(to_id) %>% 
    summarise(from = list(from_id))
 
 # flows_groups$to_id
-
 #i <- 980
 
 london_msoa %>% dim()

@@ -9,7 +9,7 @@
 # nodes
 
 # spatial file of partition (administrative units)
-# this file contains polygons of administrative units, but also various centroids that will be used for routing.
+# this file contains polygons of administrative units, but also various from that will be used for routing.
 # london_msoa
 
 ## Constructing network
@@ -20,8 +20,8 @@
 # graph
 
 
-## Routing (origins and destinations based on the centroids)
-# which centroids to route as origin and destination
+## Routing (origins and destinations based on the from)
+# which from to route as origin and destination
 # params : centroid
 # available options: geom_centr, pw_centr, graph_centr, ew_centr (employment weighted centr)
 
@@ -42,16 +42,16 @@
 # 
 # graph <- london_graph_simple
 # 
-# city_data <- london_msoa[grep("Camden",geo_name),]
+# region_data <- london_msoa[grep("Camden",geo_name),]
 # 
-# flows_london_sample <- flows_london[(workplace %in% city_data$geo_code) &
-#                                       (residence %in% city_data$geo_code),]
+# flows_london_sample <- flows_london[(workplace %in% region_data$geo_code) &
+#                                       (residence %in% region_data$geo_code),]
 # 
-# flows_matrix <- foreach(i = 1:length(unique(city_data[,id]))
+# flows_matrix <- foreach(i = 1:length(unique(region_data[,id]))
 #                         ,.combine = rbind
-#                         ,.final = as.matrix) %do% 
+#                         ,.final = as.matrix) %do%
 #   {
-#     x <- rep_len(0,nrow(city_data))
+#     x <- rep_len(0,nrow(region_data))
 #     d <- flows_london_sample[from_id == (i + 160),.(bike,to_id)]
 #     x[d[,to_id]%% 160 ] <- d[,bike]
 #     x
@@ -60,190 +60,382 @@
 # # view(flows_matrix)
 # 
 # run_name <- "osm_unfilt"
-# centroids <-  "centr_geom"
+# from <-  "centr_geom"
 # 
-# # test of the function is successful.
-# registerDoParallel(cores = 3)
-# test_simu <- simulation(london_graph_simple
-#                         ,flows_matrix = flows_matrix
-#                         ,city_data = city_data
-#                         ,run_name = run_name
-#                         ,centroids = centroids)
-# stopImplicitCluster()
+# profvis({
+#   # test of the function is successful.
+#   registerDoParallel(cores = 3)
+#   test_simu <- simulation(london_graph_simple
+#                           ,flows_matrix = flows_matrix
+#                           ,region_data = region_data
+#                           ,run_name = run_name
+#                           ,from = from)
+#   stopImplicitCluster()
+#   
+# })
 
 
+# 
+# flows_matrix <- flows_mat
+# 
+# region_data <- city
+# 
+# run_name <- "test_from_to"
 
-simulation <- function(graph, flows_matrix, city_data, run_name, centroids = "centr_geom", cost_fun = "exp") {
-  # run name is a prefix to inclide in the nae of saved files
-  if ( !(centroids %in% colnames(city_data))) return(print("error, provide a existing column with point geometries to 'centroids'"))
+simulation <- function(flows_matrix
+                       ,region_data
+                       ,run_name
+                       ,graph = NULL
+                       ,from = "geometry"
+                       ,to = NULL
+                       ,graph_dist_matrix = NULL
+                       ,norm = 2 
+                       ,time = FALSE
+                       ,n_cores = 3
+                       ,cost_fun = "exp") {
+  # run name is a prefix to inclide in the name of saved files
+
+  if ( !(from %in% colnames(region_data))) return(print("error, provide a existing column with point geometries to 'from'"))
+  
+  if(is_null(to)) {to <- from} else if ( !(to %in% colnames(region_data))) return(print("error, provide a existing column with point geometries to 'from'"))
+  
   tryCatch({
-    dir.create(here::here(paste0("simulations/",run_name,"_",centroids)))
-    directory <- here::here(paste0("simulations/",run_name,"_",centroids))
-    },error = function(e) print(e) )
+    if (time == TRUE) {
+      dir.create(paste0(run_name,"_time"))
+      directory <- paste0(run_name,"_time")
+    } else {
+      dir.create(run_name)
+      directory <- run_name
+    }
 
-  centr_node_id <- paste0(centroids,"_node")
-  city_data[,centr_node_id] <- find_nearest_node_on_graph(graph,city_data[,..centroids] %>% st_as_sf(crs = 4326))
+  },error = function(e) print(e) )
   
-  centroid_distance <- city_data[,..centroids] %>% 
-    st_as_sf(crs = 4326) %>%
-    st_distance() %>% 
-    set_units(NULL)
+  print("created directory")
   
-  graph_dist_matrix <- get_distance_matrix(graph
-                                     ,from = city_data[,get(centr_node_id)]
-                                     ,to = city_data[,get(centr_node_id)]
-                                     ,allcores = TRUE)
+  if (norm == 1) {
+    # cl <- parallel::makeClus
+    centroid_distance <- norm_p(region_data[,..from] %>% st_as_sf(wkt = from,crs = 4326)
+                                ,region_data[,..to] %>% st_as_sf(wkt = to,crs = 4326)
+                                ,elementwise = FALSE
+                                # ,cores = n_cores # this feature needs to be implemented
+    ) %>% 
+      set_units(NULL) %>%
+      round()
+  } else if (norm == 2) {
+    centroid_distance <- region_data[,..from] %>%
+      st_as_sf(wkt = from,crs = 4326) %>% 
+      st_distance(region_data[,..to] %>% st_as_sf(wkt = to,crs = 4326)
+                  ,by_element = FALSE) %>% 
+      set_units(NULL)  %>%
+      round()
+  }
   
-  links_of_interest <- which(centroid_distance < 15000, arr.ind = TRUE)
+  print("distance matrix computed")
   
-  # links_of_interest %>% list.save("links_of_interest.rds")
+  # if(is.null(graph) & is.null(graph_dist_matrix)) {
+  #   stop("provide either a graph on which to compute shortest paths, or a matrix of distances")
+  #   }
   
-  distances_graph <-
-    get_distance_pair(graph
-                      ,from = city_data[links_of_interest[,1],get(centr_node_id)]
-                      ,to = city_data[links_of_interest[,2],get(centr_node_id)]
-                      ,allcores = TRUE
-    )
+  if(!is.null(graph) | !is.null(graph_dist_matrix)) {
+    
+    if(is.null(graph_dist_matrix)) {
+      
+      # centr_node_id <- "graph_"
+      
+      # registerDoParallel(cores = n_cores)
+      centr_node_id_from <- paste0(from,"_id")
+      region_data[,centr_node_id_from] <- find_nearest_node_on_graph(graph = graph
+                                                                     ,region_data[,..from] %>% st_as_sf(wkt = from,crs = 4326)
+                                                                     ,n_cores = n_cores
+      )
+      
+      if(!is_null(to)) {
+        if((from != to)) {
+          centr_node_id_to <- paste0(to,"_id")
+          region_data[,centr_node_id_to] <- find_nearest_node_on_graph(graph = graph
+                                                                       ,region_data[,..to] %>% st_as_sf(wkt = to,crs = 4326) 
+                                                                       ,n_cores = n_cores
+          )
+        } 
+        else if (from == to) {
+          centr_node_id_to <- centr_node_id_from
+          # region_data[,centr_node_id_to] <- region_data[,centr_node_id_from]
+        }
+        
+      }
+      print("nearest nodes found")
+      # stopImplicitCluster()
+      
+      
+      
+      # if (is.null(graph_dist_matrix)) {
+      graph_dist_matrix <- get_distance_matrix(Graph = graph
+                                               ,from = region_data[,..centr_node_id_from][[1]]
+                                               ,to = region_data[,..centr_node_id_to][[1]]
+                                               ,allcores = TRUE) %>% 
+        round()
+      # }
+    } 
+    # } else if(!is_null(graph_dist_matrix)) {
+    # graph_dist_matrix %>% list.save(paste0(directory,"/","graph_dist_matrix",".rds"))
+    # 
+    # print("computed and saved distance matrix")
+    
+    links_of_interest <- which(centroid_distance < 15000, arr.ind = TRUE)
+    
+    # links_of_interest %>% list.save("links_of_interest.rds")
+    
+    print(" starting to compute the shortest distance in the network.")
+    
+    # if (is.null(graph_dist_matrix)) {
+    #   distances_graph <-
+    #     get_distance_pair(Graph = graph
+    #                       ,from = region_data[links_of_interest[,1],centr_node_id][[1]]
+    #                       ,to = region_data[links_of_interest[,2],centr_node_id][[1]]
+    #                       ,allcores = TRUE
+    #     )
+    # } else if (!is.null(graph_dist_matrix)) {
+    
+    distances_graph <- graph_dist_matrix[links_of_interest] %>% unlist
+    
+    # }
+    
+    print("computed pair distances of paths of interest")
+    
+    centr_dist <- centroid_distance[links_of_interest] %>% unlist
+    
+    # if (norm_p == 1) {
+    #   centr_dist <- norm_p(st_geometry(region_data[links_of_interest[,1],]) 
+    #                        ,st_geometry(region_data[links_of_interest[,2],])
+    #                        ,p = 1
+    #   )
+    #   
+    # } else if (norm_p == 2){
+    #   centr_dist <- st_distance(x = region_data[links_of_interest[,1],from] %>% st_as_sf(crs = 4326)
+    #                             ,y = region_data[links_of_interest[,2],from] %>% st_as_sf(crs = 4326)
+    #                             ,by_element = TRUE
+    #   ) %>%
+    #     set_units(NULL)
+    # }
+    
+    print("computed pair distances between from")
+    
+    # x <- sample(1:nrow(links_of_interest),3000)
+    
+    jpeg(paste0(directory,"/",run_name,"_dists_all.jpg")
+         ,height = 5.83
+         ,width = 8.27
+         ,quality = 80
+         ,units = "in"
+         ,res = 150)
+    
+    plot(centr_dist#[x]
+         ,distances_graph#[x]
+         ,col = "navyblue"
+         ,pch = 20
+         #,log = "y"
+         ,cex = 0.3
+         ,cex.lab = 1.2
+         ,main = "network and crowfly distance comparison, London"
+         ,xlab = "crow-fly distance, m"
+         ,ylab = "network shortest distance, m")
+    
+    # lines(1:max(centr_dist)
+    #       ,1:max(centr_dist)*sqrt(2)
+    #       ,col = "darkorange"
+    #       ,lwd = 2)
+    lines(1:max(centr_dist)
+          ,1:max(centr_dist)
+          ,col = "darkred"
+          ,lwd = 2)
+    # lines(centr_dist
+    #       ,dist_model$fitted.values
+    #       ,col = "darkgreen")
+    # legend(x = "bottomright"
+    #        #,y = 1000
+    #        ,legend = c(
+    #          # "f(x) = 1.414x"
+    #          "f(x) = x"
+    #          # ,"f(x) = 1.236x"
+    #        )
+    #        ,cex = 1.3
+    #        ,col = c(
+    #          # "orange"
+    #          "darkred"
+    #          # ,"darkgreen"
+    #        )
+    #        ,lwd = 2)
+    dev.off()
+    #### Mapping the difficultly accessible locations across london based on the network ####
+    try({
+      outliers_of_interest <- which((distances_graph/centr_dist)>sqrt(2))
+      
+      #### interlude to check consistency :
+      #### 
+      # outliers_of_interest <- which((distances_graph/centr_dist)<1)
+      # 
+      # (distances_graph/centr_dist) %>% hist()
+      # 
+      # tmap_mode("view")
+      # 
+      # region_data[links_of_interest[outliers_of_interest,1],"geometry"] %>% qtm() +
+      #   (graph$coords[graph$coords$node_id %in% region_data[links_of_interest[outliers_of_interest,2],"geometry_id"][[1]]] %>%
+      #      st_as_sf(coords = c("X","Y")
+      #               ,crs=4326) %>% qtm(dots.col = "red"))
+      
+      
+      node_outliers <-
+        region_data[links_of_interest[outliers_of_interest,1],..centr_node_id_to][
+          ,.(acces_diff=.N/nrow(region_data)),by = centr_node_id_to] 
+      # %>%
+      #   group_by({{centr_node_id_to}}) %>%
+      #   mutate(acces_diff=dplyr::n()/nrow(region_data))
+      
+      # [,.(acces_diff=.N/nrow(region_data)),by = centr_node_id]
+      
+      cols <- c("geo_code","geo_name","geometry",centr_node_id_to)
+      node_outliers <- merge(region_data[,..cols] # %>% st_as_sf(wkt = "geometry",crs =4326)
+                             ,node_outliers
+                             ,by = centr_node_id_to
+                             ,all = TRUE)
+      
+      access_difficulty_map <- node_outliers %>%
+        st_as_sf(crs = 4326, wkt = "geometry") %>%
+        tm_shape() + tm_polygons(col = "acces_diff"
+                             ,size = .3
+                             ,palette = "viridis"
+                             ,style = "pretty"
+                             ,border.col = "black"
+                             ,title = "Access difficulty"
+                             #,contrast = c(.2,1)
+                             ,colorNA = "dimgray") +
+        tm_layout(main.title = "Difficulty to access"
+                  ,bg.color = "white"
+                  ,legend.outside = TRUE
+                  
+        )
+      access_difficulty_map %>% tmap_save(paste0(directory,"/",run_name,"_access_difficulty_map.pdf"))
+    }
+    ,silent = FALSE)
+    
+  } else if(is.null(graph) & is.null(graph_dist_matrix)) { graph_dist_matrix <- centroid_distance }
   
-  centr_dist <- st_distance(x = city_data[links_of_interest[,1],..centroids] %>% st_as_sf(crs = 4326)
-                            ,y = city_data[links_of_interest[,2],..centroids] %>% st_as_sf(crs = 4326)
-                            ,by_element = TRUE
-  ) %>%
-    set_units(NULL)
+  #### GRAVITY MODEL STUFF
   
-  jpeg(paste0(directory,"/",run_name,"_dists_all.jpg")
+  # key values : for an exponential cost function, the range of beta values to look at is (0,2) with a best fit around  0.025 is the smaller study area
+  # for time in the cost function, 
+  
+  
+  # ameliorate the following part
+  # options : convrging which, for with specified values
+  
+  if (time) {
+    # converting distance to kilometres
+    graph_dist_matrix <- graph_dist_matrix/(1000*14)
+    range_i <- 0:120
+  } else if (!time) { 
+    # converting distances to time
+    range_i <- 1:30
+    graph_dist_matrix <- graph_dist_matrix/1000
+  }
+  
+  # maximised <- FALSE
+  # beta <- 2
+  # alpha <- 0.01
+  # i <- 0
+  # r2_ref <- 0
+  # e_sor <- c()
+  # 
+  # while (!maximised) {
+  #   # beta <- beta+alpha
+  #   print(paste0("calibrating for beta = ",beta))
+  #   run <- run_model(flows = flows_matrix
+  #                    ,distance = graph_dist_matrix
+  #                    ,beta = beta
+  #                    ,type = "exp"
+  #                    ,cores = n_cores
+  #   )
+  #   print(paste0("R2 = ",run$r2))
+  #   e_sor <- append(e_sor,run$e_sor)
+  #   if (run$r2 > r2_ref) {
+  #     beta <- beta - alpha
+  #     r2_ref <- run$r2
+  #   } else if(run$r2 <= r2_ref)  {
+  #     maximised <- TRUE 
+  #     beta <- beta + alpha
+  #     }
+  #   i <- i+1
+  # }
+  # 
+  # beta_best_fit <- beta
+  # 
+  beta_calib <- foreach::foreach(i = range_i
+                                 ,.combine = rbind) %do% {
+                                   beta <- 0.03*i
+                                   print(paste0("RUNNING MODEL FOR beta = ",beta))
+                                   model_run <- run_model(flows = flows_matrix
+                                                    ,distance = graph_dist_matrix
+                                                    ,beta = beta
+                                                    ,type = "exp"
+                                                    ,cores = n_cores
+                                   )
+                                   
+                                   cbind(beta, model_run$r2,model_run$e_sor)
+                                 }
+  
+  # selecting the best beta
+  beta_best_fit <- beta_calib[which.max(beta_calib[,2]),1] %>% as.double()
+  
+  jpeg(paste0(directory,"/",run_name,"beta_calib.jpg")
        ,height = 5.83
-       ,width = 8.27
+       ,width = 5.83
        ,quality = 80
        ,units = "in"
        ,res = 150)
   
-  plot(centr_dist,distances_graph
-       ,col = "navyblue"
-       ,pch = 20
-       #,log = "y"
-       ,cex = 0.3
-       ,cex.lab = 1.2
-       ,main = "network and crowfly distance comparison, London"
-       ,xlab = "crow-fly distance, m"
-       ,ylab = "network shortest distance, m")
-  # lines(1:max(centr_dist)
-  #       ,1:max(centr_dist)*sqrt(2)
-  #       ,col = "darkorange"
-  #       ,lwd = 2)
-  lines(1:max(centr_dist)
-        ,1:max(centr_dist)
-        ,col = "darkred"
-        ,lwd = 2)
-  # lines(centr_dist
-  #       ,dist_model$fitted.values
-  #       ,col = "darkgreen")
-  legend(x = "bottomright"
-         #,y = 1000
-         ,legend = c(
-                     # "f(x) = 1.414x"
-                     "f(x) = x"
-                     # ,"f(x) = 1.236x"
-                     )
-         ,cex = 1.3
-         ,col = c(
-                  # "orange"
-                  "darkred"
-                  # ,"darkgreen"
-                  )
-         ,lwd = 2)
+  plot(beta_calib[,1]
+       ,beta_calib[,3]
+       ,xlab = "beta value"
+       ,ylim = c(.2,1)
+       ,ylab = "quality of fit"
+       ,main = "influence of beta on the goodness of fit"
+       ,pch = 19
+       ,cex = 0.5
+       ,type = "b")
+  
+  points(beta_calib[which.max(beta_calib[,2]),1]
+         ,beta_calib[which.max(beta_calib[,2]),2]
+         ,pch = 15)
+  
+  points(beta_calib[which.max(beta_calib[,3]),1]
+         ,beta_calib[which.max(beta_calib[,3]),3]
+         ,pch = 15)
+  
+  lines(beta_calib[,1]
+        ,beta_calib[,2]
+        ,lwd = 2
+        ,col = "darkred")
+  
+  legend(x = "bottomleft"
+         ,legend = c("Sorensen I","r_2")
+         ,pch = c(20,NA)
+         ,lwd = c(2,2)
+         ,lty = c(8,1)
+         ,col = c("black","darkred")
+         )
+  
   dev.off()
   
-  #### Mapping the difficultly accessible locations across london based on the network ####
-  
-  outliers_of_interest <- which((distances_graph/centr_dist)>sqrt(2))
-
-  node_outliers <-
-    city_data[links_of_interest[outliers_of_interest,1]
-                ,..centr_node_id][,.(acces_diff=.N/983),by = centr_node_id]
-
-  cols <- c("geo_code","geo_name",centroids,centr_node_id)
-  node_outliers <- merge.data.table(city_data[,..cols]
-                                    ,node_outliers
-                                    ,by = centr_node_id
-                                    ,all = TRUE)
-
-  access_difficulty_map <- node_outliers %>%
-    st_as_sf(crs = 4326) %>%
-    tm_shape() + tm_polygons(col = "acces_diff"
-                             ,palette = "Purples"
-                             ,style = "pretty"
-                             ,border.col = "black"
-                             ,title = "Access difficulty"
-                             ,contrast = c(.2,1)
-                             ,colorNA = "dimgray") +
-    tm_layout(main.title = "Difficulty to access"
-              ,bg.color = "white"
-              ,legend.outside = TRUE
-
-    )
-  access_difficulty_map %>% tmap_save(paste0(directory,"/",run_name,"_access_difficulty_map.pdf"))
-  
-  #### GRAVITY MODEL STUFF
-  # converting distance to kilometres
-  graph_dist_matrix <- graph_dist_matrix/1000
-  
-  maximised <- FALSE
-  beta <- 3.5
-  alpha <- 0.1
-  r2_ref <- run_model(flows = flows_matrix
-            ,distance = graph_dist_matrix
-            ,beta = beta
-            ,type = "exp"
-            ,cores = 12) %>% .$r2
-  
-  while ( !maximised ) {
-    beta <- beta-alpha 
-    print(paste0("calibrating for beta = ",beta))
-    run <- run_model(flows = flows_matrix
-                     ,distance = graph_dist_matrix
-                     ,beta = beta
-                     ,type = "exp"
-                     ,cores = 3
-    )
-    print(paste0("R2 = ",run$r2))
-    if (run$r2 > r2_ref) { 
-      beta <- beta - alpha 
-      r2_ref <- run$r2
-    } else if(run$r2 <= r2_ref)  {
-      maximised <- TRUE } 
-  }
-  
-  # beta_calib <- foreach::foreach(i = 20:40
-  #                                ,.combine = rbind) %do% {
-  #                                  beta <- 0.1*(i-1)
-  #                                  print(paste0("RUNNING MODEL FOR beta = ",beta))
-  #                                  run <- run_model(flows = flows_matrix
-  #                                                   ,distance = graph_dist_matrix
-  #                                                   ,beta = beta
-  #                                                   ,type = "exp"
-  #                                                   ,cores = 3
-  #                                  )
-  #                                  
-  #                                  cbind(beta, run$r2,run$rmse)
-  #                                }
-  # 
-  # # selecting the best beta
-  # beta_best_fit <- beta_calib[which(beta_calib[,2] == max(beta_calib[,2])),1] %>% as.double()
-  
-  beta_best_fit <- beta
-  # running the fit for the best beta. 
+  # running the fit for the best beta.
   run_best_fit <- run_model(flows = flows_matrix
                             ,distance = graph_dist_matrix
                             ,beta = beta_best_fit
                             ,type = "exp"
-                            ,cores = 3
+                            ,cores = n_cores
   )
-  
-  run_best_fit %>% list.save(paste0(directory,"/",run_name,"_best_fit.rds"))
-  
-  # plotting 
-  
+  # run_best_fit %>% list.save(paste0(directory,"/",run_name,"_best_fit.rds"))
+  # x <- sample(1:length(run_best_fit$values),3000)
+  # plotting
   jpeg(paste0(directory,"/",run_name,"_best_fit.jpg")
        ,height = 5.83
        ,width = 5.83
@@ -255,7 +447,7 @@ simulation <- function(graph, flows_matrix, city_data, run_name, centroids = "ce
     ,run_best_fit$values
     ,ylab = "flows model"
     ,xlab = "flows"
-    # ,log = "xy"
+    ,log = "xy"
     ,pch = 19
     ,cex = 0.5
   )
@@ -266,4 +458,9 @@ simulation <- function(graph, flows_matrix, city_data, run_name, centroids = "ce
   )
   dev.off()
   
+  # list("best_fit" = run_best_fit
+  #      # ,"dist_graph" = distances_graph
+  #      # ,"centr_dist" = centr_dist
+  #      )
+  # 
 }

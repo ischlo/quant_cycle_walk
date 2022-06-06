@@ -2,7 +2,7 @@ library(data.table)
 library(dodgr)
 library(RcppParallel)
 library(cppRouting)
-
+library(RcppParallel)
 
 #### London network and flows aggregating
 london_network <- dodgr::weight_streetnet(london_edges_dt %>% st_as_sf()
@@ -47,7 +47,9 @@ brighton_euclid_dist <- brighton_zones %>%
 # set the max number of cores to use 
 # in the dodgr function
 
-RcppParallel::setThreadOptions(numThreads = 3)
+RcppParallel::setThreadOptions(numThreads = 4)
+
+defaultNumThreads()
 
 brighton_network %>% head()
 
@@ -56,8 +58,7 @@ brighton_dists <- dodgr_dists(brighton_network
                               ,to = brighton_centroid
                               ,shortest = FALSE
                               ,quiet = FALSE
-                              ,parallel = TRUE
-)
+                              ,parallel = TRUE)
 
 brighton_dists %>% dim
 
