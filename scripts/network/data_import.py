@@ -4,26 +4,25 @@ import pandas as pd
 import osmnx as ox
 import geopandas as gpd
 
-
 import gc
 
 ox.config(timeout=3600)
 
-haringey_ox = ox.graph_from_place("Haringey, London, UK"
-                                  ,network_type="all"
-                                  ,buffer_dist = 500
-                                  ,simplify = True
-                                  ,truncate_by_edge = True
-                                  )
-
-ox.save_graph_geopackage(haringey_ox, "data/haringey_all_network.gpkg")
-
-fig, ax = ox.plot_graph(haringey_ox)
+# haringey_ox = ox.graph_from_place("Haringey, London, UK"
+#                                   ,network_type="all"
+#                                   ,buffer_dist = 500
+#                                   ,simplify = True
+#                                   ,truncate_by_edge = True
+#                                   )
+# 
+# ox.save_graph_geopackage(haringey_ox, "data/haringey_all_network.gpkg")
+# 
+# fig, ax = ox.plot_graph(haringey_ox)
 
 
 # we can calculate basic street network metrics and display average circuity
-stats = ox.basic_stats(haringey_ox)
-stats
+# stats = ox.basic_stats(haringey_ox)
+# stats
 
 london_cycle = ox.graph_from_place("London, UK"
                                   ,network_type="bike"

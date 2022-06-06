@@ -1,16 +1,6 @@
 Gravity model
 ================
 
-``` r
-flows_matrix <- list.load(here::here("gravity_model_files/flows_matrix.rds"))
-
-dist_matrix_cwp <- list.load(here::here("RC_outputs/pop_weighted_centroids/dist_matrix_london.rds"))
-
-msoa_graph_dist <- list.load(here::here("RC_outputs/london_all_run/dist_matrix_london.rds"))
-
-msoa_graph_dist <- msoa_graph_dist / 1000 / 14 %>% round
-```
-
 This file will cover the process of building a local version of the
 gravity model used to predict cycling and/or walking flows across
 London.
@@ -51,3 +41,30 @@ Next, we need to run the recursive procedure until the values stabilise.
 We introduce the threshold at which we will stop running the recursion
 \(\delta\). It corresponds to the rate of change of the parameter with
 respect to the previous iteration.
+
+``` r
+beta_calib <- foreach::foreach(i = 28:33
+                               ,.combine = rbind) %do% {
+                                 beta <- 0.1*(i-1)
+                                 print(paste0("RUNNING MODEL FOR beta = ",beta))
+                                 run <- run_model(flows = flows_matrix
+                                                  ,distance = msoa_graph_dist
+                                                  ,beta = beta
+                                                  ,type = "exp"
+                                                  ,cores = 3
+                                 )
+                             
+                                 cbind(beta, run$r2,run$rmse)
+                               }
+
+# beta_calib
+```
+
+``` r
+run_best_fit <- run_model(flows = flows_matrix
+                 ,distance = msoa_graph_dist
+                 ,beta = beta_best_fit
+                 ,type = "exp"
+                 ,cores = 3
+                 )
+```
