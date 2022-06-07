@@ -13,7 +13,7 @@ one. While it’s a bit more complex than just calculating the hypothenuse
 of a triangle, when done in spherical coordinates, it looks the
 following:
 
-\[d(P_1,P_2)=\rho\arccos(\cos\Delta\phi\cos(\theta_{P_1})\cos(\theta_{P_2})+\sin(\theta_{P_1})\sin(\theta_{P_2})\],
+$$d(P_1,P_2)=\rho\arccos(\cos\Delta\phi\cos(\theta_{P_1})\cos(\theta_{P_2})+\sin(\theta_{P_1})\sin(\theta_{P_2})$$,
 whre \(\rho\) is fixed and equal to the raduis of the sphere, or the
 earth. The standard longitude and latitude here correspond to the
 \(\phi\) and \(\theta\) angles in the spherical coordinate system and by
