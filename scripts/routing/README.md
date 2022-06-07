@@ -14,8 +14,8 @@ of a triangle, when done in spherical coordinates, it looks the
 following:
 
 $$d(P_1,P_2)=\rho\arccos(\cos\Delta\phi\cos(\theta_{P_1})\cos(\theta_{P_2})+\sin(\theta_{P_1})\sin(\theta_{P_2})$$,
-whre \(\rho\) is fixed and equal to the raduis of the sphere, or the
+whre $\rho$ is fixed and equal to the raduis of the sphere, or the
 earth. The standard longitude and latitude here correspond to the
-\(\phi\) and \(\theta\) angles in the spherical coordinate system and by
+$\phi$ and $\theta$ angles in the spherical coordinate system and by
 assuming a fixed earth radius, the 3rd variable becomes simply a
-constant \(\rho = R_{earth} = 6371010\) meters.
+constant $\rho = R_{earth} = 6371010$ meters.
