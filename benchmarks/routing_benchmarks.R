@@ -26,12 +26,12 @@ citation("cppRouting")
 # different algorithms if possible. 
 
 # loading the edges
-london_edges_dt <- st_read("/Users/ivann/Desktop/CASA/RC_outputs/london_all/london_all.gpkg", layer = "edges") %>% 
+london_edges_dt <- st_read("/Users/ivann/Desktop/CASA/RC_outputs/london_all_bbox/london_all.gpkg", layer = "edges") %>% 
   as.data.table()
 london_edges_dt[, c("from","to")] <- 
   london_edges_dt[, lapply(.SD, as.character), .SDcols = c("from","to")]
 
-london_nodes_dt <- st_read("/Users/ivann/Desktop/CASA/RC_outputs/london_all/london_all.gpkg"
+london_nodes_dt <- st_read("/Users/ivann/Desktop/CASA/RC_outputs/london_all_bbox/london_all.gpkg"
                            ,layer = "nodes") %>% 
   as.data.table()
 london_nodes_dt[,"osmid"] <- 
