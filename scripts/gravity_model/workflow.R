@@ -86,9 +86,10 @@ simulation <- function(flows_matrix
                        ,region_data
                        ,run_name
                        ,graph = NULL
-                       ,from = "geometry"
+                       ,from = NULL
                        ,to = NULL
                        ,graph_dist_matrix = NULL
+                       ,beta_offset = 0
                        ,norm = 2 
                        ,time = FALSE
                        ,n_cores = 3
@@ -99,6 +100,8 @@ simulation <- function(flows_matrix
   
   if(is_null(to)) {to <- from} else if ( !(to %in% colnames(region_data))) return(print("error, provide a existing column with point geometries to 'from'"))
   
+  registerDoParallel(cores = n_cores)
+  
   tryCatch({
     if (time == TRUE) {
       dir.create(paste0(run_name,"_time"))
@@ -108,27 +111,30 @@ simulation <- function(flows_matrix
       directory <- run_name
     }
 
-  },error = function(e) print(e) )
+  },error = function(e) print(e))
   
   print("created directory")
   
   if (norm == 1) {
-    # cl <- parallel::makeClus
-    centroid_distance <- norm_p(region_data[,..from] %>% st_as_sf(wkt = from,crs = 4326)
-                                ,region_data[,..to] %>% st_as_sf(wkt = to,crs = 4326)
+    centroid_distance <- norm_p(region_data[,..from] %>% st_as_sf(wkt = from, crs = 4326)
+                                ,region_data[,..to] %>% st_as_sf(wkt = to, crs = 4326)
                                 ,elementwise = FALSE
-                                # ,cores = n_cores # this feature needs to be implemented
     ) %>% 
       set_units(NULL) %>%
       round()
   } else if (norm == 2) {
     centroid_distance <- region_data[,..from] %>%
-      st_as_sf(wkt = from,crs = 4326) %>% 
-      st_distance(region_data[,..to] %>% st_as_sf(wkt = to,crs = 4326)
+      st_as_sf(wkt = from, crs = 4326) %>% 
+      st_distance(region_data[,..to] %>% st_as_sf(wkt = to, crs = 4326)
                   ,by_element = FALSE) %>% 
       set_units(NULL)  %>%
       round()
   }
+  
+  d <- region_data %>% st_as_sf(wkt = "geometry",crs = 4326) %>% st_area() %>% sqrt() %>% set_units(NULL) 
+  
+  centroid_distance <- `diag<-`(centroid_distance
+                                ,d)
   
   print("distance matrix computed")
   
@@ -140,43 +146,37 @@ simulation <- function(flows_matrix
     
     if(is.null(graph_dist_matrix)) {
       
-      # centr_node_id <- "graph_"
-      
-      # registerDoParallel(cores = n_cores)
       centr_node_id_from <- paste0(from,"_id")
       region_data[,centr_node_id_from] <- find_nearest_node_on_graph(graph = graph
-                                                                     ,region_data[,..from] %>% st_as_sf(wkt = from,crs = 4326)
-                                                                     ,n_cores = n_cores
+                                                                     ,region_data[,..from] %>% st_as_sf(wkt = from, crs = 4326)
+                                                                    
       )
       
       if(!is_null(to)) {
         if((from != to)) {
           centr_node_id_to <- paste0(to,"_id")
           region_data[,centr_node_id_to] <- find_nearest_node_on_graph(graph = graph
-                                                                       ,region_data[,..to] %>% st_as_sf(wkt = to,crs = 4326) 
-                                                                       ,n_cores = n_cores
+                                                                       ,region_data[,..to] %>% st_as_sf(wkt = to, crs = 4326)
+                                                                       
           )
         } 
         else if (from == to) {
           centr_node_id_to <- centr_node_id_from
-          # region_data[,centr_node_id_to] <- region_data[,centr_node_id_from]
         }
         
       }
       print("nearest nodes found")
-      # stopImplicitCluster()
-      
-      
-      
-      # if (is.null(graph_dist_matrix)) {
+
+     
       graph_dist_matrix <- get_distance_matrix(Graph = graph
                                                ,from = region_data[,..centr_node_id_from][[1]]
                                                ,to = region_data[,..centr_node_id_to][[1]]
                                                ,allcores = TRUE) %>% 
         round()
-      # }
     } 
-    # } else if(!is_null(graph_dist_matrix)) {
+    
+    # graph_dist_matrix <- `diag<-`(graph_dist_matrix, d)
+    
     # graph_dist_matrix %>% list.save(paste0(directory,"/","graph_dist_matrix",".rds"))
     # 
     # print("computed and saved distance matrix")
@@ -185,38 +185,11 @@ simulation <- function(flows_matrix
     
     # links_of_interest %>% list.save("links_of_interest.rds")
     
-    print(" starting to compute the shortest distance in the network.")
-    
-    # if (is.null(graph_dist_matrix)) {
-    #   distances_graph <-
-    #     get_distance_pair(Graph = graph
-    #                       ,from = region_data[links_of_interest[,1],centr_node_id][[1]]
-    #                       ,to = region_data[links_of_interest[,2],centr_node_id][[1]]
-    #                       ,allcores = TRUE
-    #     )
-    # } else if (!is.null(graph_dist_matrix)) {
-    
     distances_graph <- graph_dist_matrix[links_of_interest] %>% unlist
-    
-    # }
     
     print("computed pair distances of paths of interest")
     
     centr_dist <- centroid_distance[links_of_interest] %>% unlist
-    
-    # if (norm_p == 1) {
-    #   centr_dist <- norm_p(st_geometry(region_data[links_of_interest[,1],]) 
-    #                        ,st_geometry(region_data[links_of_interest[,2],])
-    #                        ,p = 1
-    #   )
-    #   
-    # } else if (norm_p == 2){
-    #   centr_dist <- st_distance(x = region_data[links_of_interest[,1],from] %>% st_as_sf(crs = 4326)
-    #                             ,y = region_data[links_of_interest[,2],from] %>% st_as_sf(crs = 4326)
-    #                             ,by_element = TRUE
-    #   ) %>%
-    #     set_units(NULL)
-    # }
     
     print("computed pair distances between from")
     
@@ -229,21 +202,21 @@ simulation <- function(flows_matrix
          ,units = "in"
          ,res = 150)
     
-    plot(centr_dist#[x]
+    smoothScatter(centr_dist#[x]
          ,distances_graph#[x]
-         ,col = "navyblue"
-         ,pch = 20
-         #,log = "y"
-         ,cex = 0.3
-         ,cex.lab = 1.2
+         # ,col = "navyblue"
+         # ,pch = 20
+         # #,log = "y"
+         # ,cex = 0.3
+         # ,cex.lab = 1.2
          ,main = "network and crowfly distance comparison, London"
          ,xlab = "crow-fly distance, m"
          ,ylab = "network shortest distance, m")
-    
     # lines(1:max(centr_dist)
     #       ,1:max(centr_dist)*sqrt(2)
     #       ,col = "darkorange"
     #       ,lwd = 2)
+
     lines(1:max(centr_dist)
           ,1:max(centr_dist)
           ,col = "darkred"
@@ -282,19 +255,18 @@ simulation <- function(flows_matrix
       #   (graph$coords[graph$coords$node_id %in% region_data[links_of_interest[outliers_of_interest,2],"geometry_id"][[1]]] %>%
       #      st_as_sf(coords = c("X","Y")
       #               ,crs=4326) %>% qtm(dots.col = "red"))
-      
-      
+
       node_outliers <-
         region_data[links_of_interest[outliers_of_interest,1],..centr_node_id_to][
           ,.(acces_diff=.N/nrow(region_data)),by = centr_node_id_to] 
-      # %>%
+
+      # node_outliers <-
+      #   region_data[links_of_interest[outliers_of_interest,1],..centr_node_id_to] %>%
       #   group_by({{centr_node_id_to}}) %>%
       #   mutate(acces_diff=dplyr::n()/nrow(region_data))
       
-      # [,.(acces_diff=.N/nrow(region_data)),by = centr_node_id]
-      
       cols <- c("geo_code","geo_name","geometry",centr_node_id_to)
-      node_outliers <- merge(region_data[,..cols] # %>% st_as_sf(wkt = "geometry",crs =4326)
+      node_outliers <- merge(region_data[,..cols]
                              ,node_outliers
                              ,by = centr_node_id_to
                              ,all = TRUE)
@@ -324,7 +296,6 @@ simulation <- function(flows_matrix
   
   # key values : for an exponential cost function, the range of beta values to look at is (0,2) with a best fit around  0.025 is the smaller study area
   # for time in the cost function, 
-  
   
   # ameliorate the following part
   # options : convrging which, for with specified values
@@ -368,16 +339,15 @@ simulation <- function(flows_matrix
   # }
   # 
   # beta_best_fit <- beta
-  # 
+  
   beta_calib <- foreach::foreach(i = range_i
-                                 ,.combine = rbind) %do% {
-                                   beta <- 0.03*i
+                                 ,.combine = rbind) %dopar% {
+                                   beta <- (0.03*i)+beta_offset
                                    print(paste0("RUNNING MODEL FOR beta = ",beta))
                                    model_run <- run_model(flows = flows_matrix
                                                     ,distance = graph_dist_matrix
                                                     ,beta = beta
-                                                    ,type = "exp"
-                                                    ,cores = n_cores
+                                                    ,type = "exp"       
                                    )
                                    
                                    cbind(beta, model_run$r2,model_run$e_sor)
@@ -423,7 +393,6 @@ simulation <- function(flows_matrix
          ,lty = c(8,1)
          ,col = c("black","darkred")
          )
-  
   dev.off()
   
   # running the fit for the best beta.
@@ -431,9 +400,13 @@ simulation <- function(flows_matrix
                             ,distance = graph_dist_matrix
                             ,beta = beta_best_fit
                             ,type = "exp"
-                            ,cores = n_cores
   )
-  # run_best_fit %>% list.save(paste0(directory,"/",run_name,"_best_fit.rds"))
+
+  list("best_fit" = run_best_fit$values
+       ,"beta_calib" = beta_calib
+       ) %>% list.save(paste0(directory,"/",run_name,"_best_fit.rds"))
+  
+  
   # x <- sample(1:length(run_best_fit$values),3000)
   # plotting
   jpeg(paste0(directory,"/",run_name,"_best_fit.jpg")
@@ -458,9 +431,6 @@ simulation <- function(flows_matrix
   )
   dev.off()
   
-  # list("best_fit" = run_best_fit
-  #      # ,"dist_graph" = distances_graph
-  #      # ,"centr_dist" = centr_dist
-  #      )
-  # 
+  stopImplicitCluster()
+  #
 }

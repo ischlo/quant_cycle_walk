@@ -54,7 +54,8 @@ den_bike <- density(flows[,distance]
 #### Plotting ####
 pdf("walk_cycle_dist_distribution.pdf")
 
-plot(den_bike,col = "darkred"
+plot(den_bike
+     ,col = "darkred"
      ,xlab = "distance, Km"
      ,xlim = c(0,30)
      ,ylim = c(0,0.2)

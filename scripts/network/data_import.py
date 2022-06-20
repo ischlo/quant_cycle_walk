@@ -3,80 +3,89 @@ import numpy as np
 import pandas as pd
 import osmnx as ox
 import geopandas as gpd
+# import gc
 
-import gc
+ox.config(timeout=9000)
 
-ox.config(timeout=3600)
-
-# haringey_ox = ox.graph_from_place("Haringey, London, UK"
-#                                   ,network_type="all"
-#                                   ,buffer_dist = 500
-#                                   ,simplify = True
-#                                   ,truncate_by_edge = True
-#                                   )
-# 
-# ox.save_graph_geopackage(haringey_ox, "data/haringey_all_network.gpkg")
-# 
-# fig, ax = ox.plot_graph(haringey_ox)
-
+def ready_to_export(data):
+    ''' data is blablabla '''
+    
+    keep = ['element_type','osmid','geometry','highway','bicycle','foot','cycleway'
+            #,'pedestrian'
+           ]
+    
+    data = data.reset_index()
+    data = data[keep]
+    data= data.astype({'highway':str
+                    , 'bicycle':str
+                    , 'foot':str
+                    , 'cycleway':str
+                    #, 'pedestrian': str
+                      })
+    
+    return data
 
 # we can calculate basic street network metrics and display average circuity
 # stats = ox.basic_stats(haringey_ox)
 # stats
-
-london_cycle = ox.graph_from_place("London, UK"
-                                  ,network_type="bike"
-                                  ,buffer_dist = 500
-                                  ,simplify = True
-                                  ,truncate_by_edge = True
-                                  )
-  
-ox.save_graph_geopackage(london_cycle, "data/london_cycle.gpkg")
-
-london_cycle = None
-
-# brighton and countryside cycling network
-  
-brighton_bbox = [-0.7443,50.7829,0.1071,51.1035]
-                                  
-brighton_cycle = ox.graph_from_bbox(51.1035
-                                    ,50.7829
-                                    ,0.1071
-                                    ,-0.7443
-                                    ,network_type="bike"
-                                    ,simplify = True
-                                    ,truncate_by_edge = True
-                                    ,clean_periphery = True
-                                    )
-
-ox.save_graph_geopackage(brighton_cycle, "data/brighton_cycle.gpkg")
-
-brighton_cycle = None
-# cleaning env
-
-gc.collect()
 
 # getting the data by tag for highways that can accomodate cycling, 
 # from osm tags, those are: 
 
 # highway=*
 
-tags_cycle = {
-  "highway" : ["cycleway","path","primary","secondary","tertiary","unclassified"
-                ,"residential","primary_link","secondary_link","tertiary_link"]
-  ,"cycleway": True
-  ,"bicycle" : ["yes", "designated","permissive","destination","dismount"]
-  ,"surface":True
-}
+# tags_cycle = {
+#   "highway" : ["cycleway","path","primary","secondary","tertiary","unclassified"
+#                 ,"residential","primary_link","secondary_link","tertiary_link"
+#                 ,"footway"]
+#   ,"cycleway": True
+#   ,"bicycle" : ["yes", "designated","permissive","destination","dismount"]
+#   ,"surface":True
+# }
+# 
+# # tags for the general road network containing all segments
+# tags_highway = {
+#   "highway" : True
+# }
+# 
+# # tags for walkable segments
+# # add tags from map features OSM
+# tags_walk = {
+#   "highway" : ["pedestrian"
+#                ,"footway"
+#                ,"path"
+#                ,"cycleway"
+#                ,"steps"
+#                ,"unclassified"
+#                ,"residential"
+#                ,"living_street"
+#                ,"track"
+#                ,"footway"
+#                ,"bridleway"
+#                ,"steps"
+#                ,"corridor"
+#                ,"path"
+#               ]
+#   #,"foot" : ["yes", "designated","permissive"]
+# }
 
-brighton_custom_cycle=ox.geometries_from_bbox(51.1035
-                                              ,50.7829
-                                              ,0.1071
-                                              ,-0.7443
-                                              ,tags = tags_cycle)
+# area_custom_graph = ox.graph_from_place("Edinburgh, Scotland"
+#                                   ,network_type="all"
+#                                   ,buffer_dist = 20000
+#                                   ,simplify = True
+#                                   ,truncate_by_edge = True
+#                                   )
+# 
+# ox.save_graph_geopackage(area_custom_graph, "scotland_all.gpkg")
 
-brighton_custom_cycle=gpd.GeoDataFrame(brighton_custom_cycle)
+area_custom_graph = ox.graph_from_bbox(58.620
+                                    ,55.292
+                                    ,-1.736
+                                    ,-6.372
+                                    ,network_type="all"
+                                    ,simplify = True
+                                    ,truncate_by_edge = True
+                                    ,clean_periphery = True
+                                    )
 
-brighton_custom_cycle.
-
-# ox.(brighton_custom_cycle,"data/brighton_custom_cycle.gpkg")
+ox.save_graph_geopackage(area_custom_graph, "custom_graph.gpkg")

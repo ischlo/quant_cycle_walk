@@ -26,25 +26,13 @@ library(bikedata)
 library(extrafont)
 library(units)
 library(wellknown)
-
-
-font_import()
-# Show the full list
-fonts()
+library(latex2exp)
 
 options(max.print = 50)
 
 # install.packages('bikedata')
-
 # devtools::install_github ("mpadge/bikedata")
 
-# useBasiliskEnv(path.expand("~/.cache/basilisk/1.2.1/velociraptor-1.0.0/env"))
-
-# httr_options()
-# httr::set_config(config(ssl_verifyhost = 1)
-#                  ,override = TRUE)
-
-packageVersion("PROJ")
 remotes::install_github("luukvdmeer/sfnetworks", "fix-onattach")
 
 ##### 
@@ -59,14 +47,18 @@ thames <- st_read("data/thames.geojson") %>% st_transform(4326)
 # readig the file for all of london
 st_layers("data/london_cycle.gpkg")
 
-london_nodes_dt <- st_read("../data/london_cycle.gpkg", layer = "nodes") %>% as.data.table()
+london_nodes_dt <- st_read("/Users/ivann/Desktop/CASA/RC_outputs/london_all/london_all.gpkg", layer = "nodes") 
 london_nodes_dt[,"osmid"] <- 
   london_nodes_dt[, lapply(.SD, as.character), .SDcols = c("osmid")]
 
+# st_write(london_nodes_dt,"london_nodes.geojson")
+# 
 # loading the edges
-london_edges_dt <- st_read("../data/london_cycle.gpkg", layer = "edges") %>% as.data.table()
+london_edges_dt <- st_read("/Users/ivann/Desktop/CASA/RC_outputs/london_all/london_all.gpkg", layer = "edges") %>% as.data.table()
 london_edges_dt[, c("from","to")] <- 
   london_edges_dt[, lapply(.SD, as.character), .SDcols = c("from","to")]
+
+# st_write(london_edges_dt,"london_edges.geojson")
 
 # summary statistics of london cycle network from osmnx ####
 
@@ -76,24 +68,7 @@ london_edges_dt %>%
   colnames()
 
 tmap_mode("view")
-head(london_edges_dt,5000) %>% st_as_sf() %>% qtm()
-
-#### Using data tables and sfnetworks to generate the network ####
-## attempt to use data.tables
-
-# did not run yet
-# london_network <- sfnetworks::sfnetwork(nodes = london_nodes_dt
-#                                         ,edges = london_edges_dt
-#                                         ,node_key = "osmid"
-#                                         ,directed = FALSE
-#                                         ,edges_as_lines = TRUE
-#                                         )
-
-# with tbl graph 
-
-# london_tibble_network <- tbl_graph(nodes = london_nodes_dt
-#                                    ,edges = london_edges_dt
-#                                    ,node_key = "osmid")
+head(london_edges_dt,500) %>% st_as_sf() %>% qtm()
 
 #### London Network
 # Next steps : 
@@ -192,60 +167,60 @@ london_msoa %>% list.save("data/london_msoa.rds")
 
 #### local init of gravity model run ####
 # 
-graph <- list.load("../data/london_graph_simple.rds")
-
-city <- list.load("../data/london_msoa.rds") %>%
-  as.data.table() # %>% st_as_sf(crs = 4326)
-
+# graph <- list.load("../data/london_graph_simple.rds")
+# 
+# city <- list.load("../data/london_msoa.rds") %>%
+#   as.data.table() # %>% st_as_sf(crs = 4326)
+# 
 # geom_centr <- st_read("../data/london_centr_geom.geojson") %>% st_as_sf(crs = 4326)
-
+# 
 # pw_centr <- st_read("../data/london_pw_centr.geojson") %>% st_as_sf(crs = 4326)
-
-flows <- list.load("../data/flows_london.rds") %>%
-  as.data.table()
-
-graph_dist_matrix <- list.load("/Users/ivann/Desktop/CASA/data/dist_matrix_london.rds")
-
-city <- city[grepl("Camden",city$geo_name) |
-               grepl("Islington",city$geo_name) |
-               grepl("City of London",city$geo_name) #|
-             # grepl("Westminster",city$geo_name) |
-             # grepl("Southwark",city$geo_name) |
-             # grepl("Hackney",city$geo_name) |
-             # grepl("Haringey", city$geo_name)
-             ,]
-
-city[,"id"] <- 1:nrow(city)
-
-flows_london_sample <- flows[(workplace %in% city$geo_code) &
-                               (residence %in% city$geo_code),-c("from_id","to_id")]
-
-flows_london_sample <- flows_london_sample %>% merge(city[,c("geo_code","id")] #%>% st_drop_geometry()
-                                                     ,by.x = "residence"
-                                                     ,by.y = "geo_code")
-
-flows_london_sample <- flows_london_sample %>% merge(city[,c("geo_code","id")] #%>% st_drop_geometry()
-                                                     ,by.x = "workplace"
-                                                     ,by.y = "geo_code")
-
-setnames(flows_london_sample
-         ,old = c("id.x","id.y")
-         ,new = c("from_id","to_id")
-)
-
-flows_mat <- foreach(i = city[,id]
-                     ,.combine = rbind
-                     ,.final = as.matrix) %do%
-  {
-    x <- rep_len(0,nrow(city))
-    d <- flows_london_sample[from_id == i,.(bike,to_id)] # flows
-    x[d[,to_id]] <- d[,bike]
-    x
-  }
+# 
+# flows <- list.load("../data/flows_london.rds") %>%
+#   as.data.table()
+# 
+# graph_dist_matrix <- list.load("/Users/ivann/Desktop/CASA/data/dist_matrix_london.rds")
+# 
+# city <- city[grepl("Camden",city$geo_name) |
+#                grepl("Islington",city$geo_name) |
+#                grepl("City of London",city$geo_name) |
+#                grepl("Westminster",city$geo_name) |
+#                grepl("Southwark",city$geo_name) |
+#                grepl("Hackney",city$geo_name) |
+#                grepl("Haringey", city$geo_name)
+#              ,]
+# 
+# city[,"id"] <- 1:nrow(city)
+# 
+# flows_london_sample <- flows[(workplace %in% city$geo_code) &
+#                                (residence %in% city$geo_code),-c("from_id","to_id")]
+# 
+# flows_london_sample <- flows_london_sample %>% merge(city[,c("geo_code","id")] #%>% st_drop_geometry()
+#                                                      ,by.x = "residence"
+#                                                      ,by.y = "geo_code")
+# 
+# flows_london_sample <- flows_london_sample %>% merge(city[,c("geo_code","id")] #%>% st_drop_geometry()
+#                                                      ,by.x = "workplace"
+#                                                      ,by.y = "geo_code")
+# 
+# setnames(flows_london_sample
+#          ,old = c("id.x","id.y")
+#          ,new = c("from_id","to_id")
+# )
+# 
+# flows_mat <- foreach(i = city[,id]
+#                      ,.combine = rbind
+#                      ,.final = as.matrix) %do%
+#   {
+#     x <- rep_len(0,nrow(city))
+#     d <- flows_london_sample[from_id == i,.(bike,to_id)] # flows
+#     x[d[,to_id]] <- d[,bike]
+#     x
+#   }
 # 
 # flows_mat %>% dim
 # 
-cores <- 2
+# cores <- 2
 # 
 # print("flows matrix computed locally")
 # 
@@ -258,41 +233,13 @@ cores <- 2
 # #
 # run <- "osm_unfilt_norm1"
 # 
-graph = graph
-graph_dist_matrix = NULL#graph_dist_matrix
-flows_matrix = flows_mat
-region_data = city %>% as.data.table()
-from = "pop_weight_geom"
-to = "workplace_centr"
-norm = 2
-time = FALSE
-run_name = "osm_unfilt_norm1"
-n_cores = cores
-
-
-#### smaller networks ####
-#
-london_edges_dt[,highway:=as.character(highway)]
-
-london_edges_dt[!grepl("motorway",highway),]
-
-
-#### Nearest points algorithm test ####
-
-p_1
-
-p_2
-
-#### ####
-
-a <- matrix(data = c(1,1,1
-                     ,2,2,2
-                     ,3,3,3)
-            ,byrow = TRUE
-            ,ncol = 3)
-
-a %>% typeof()
-
-apply(a,MARGIN = 2,FUN = sum)
-
-
+# graph = graph
+# graph_dist_matrix = NULL#graph_dist_matrix
+# flows_matrix = flows_mat
+# region_data = city %>% as.data.table()
+# from = "pop_weight_geom"
+# to = "workplace_centr"
+# norm = 2
+# time = FALSE
+# run_name = "osm_unfilt_norm1"
+# n_cores = cores
