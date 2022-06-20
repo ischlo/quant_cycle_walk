@@ -12,17 +12,15 @@ london_msoa[, "tip_dist"] <- london_msoa[,"geometry"] %>%
               set_units(NULL)
 
 # all: the whole network with just motoroways removed. 
-all_network <- list.load("/Users/ivann/Desktop/CASA/benchmarks/osm_all_graph.rds")
+# all_network <- list.load("/Users/ivann/Desktop/CASA/benchmarks/osm_all_graph.rds")
 
 # INITIATING THE GRAPH WITH THE OMSNX OUTPUT 
-# all_network <- make_cppr_net(edges = london_edges_dt[!grepl("motorway",highway),.(from,to,length)]
-#                              ,nodes = london_nodes_dt[,.(osmid,x,y)]) 
+all_network <- make_cppr_net(edges = london_edges_dt[!grepl("motorway",highway),.(from,to,length)]
+                             ,nodes = london_nodes_dt[,.(osmid,x,y)])
 
 # a link that can be seen on google maps but is missing in the osm data is added manually, because it creates a disconnection otherwise. 
 # some disconnections are added when the motorways are removed, so in the case when a node falls into one, it has to be added. 
-
 missing_links_osm <- list(c("1768610567","91698655"))
-
 # could be used with lapply vectorially. But the node determination hs to be manual as of now.
 all_network <- add_edge_cppr(all_network
                              ,from = missing_links_osm[[1]][1]
@@ -154,62 +152,75 @@ distances_0 <- `diag<-`(distances_0,london_msoa[,tip_dist])
 
 dist_0_interest <- which(distances_0 < 15000,arr.ind = TRUE)
 
-orig <- dist_0_interest[,1]
-dest <- dist_0_interest[,2]
-
-x <- sample(1:nrow(dist_0_interest),15000)
-
 #### distance matrices 
 
-#### distance pairs ####
-
-dist_1 <- get_distance_pair(dodgr_walk
-                            ,from = dodgr_walk$dict$ref[dodgr_walk_noi[orig[x]]]
-                            ,to = dodgr_walk$dict$ref[dodgr_walk_noi[dest[x]]]
-                            ,algorithm = "NBA"
+dist_1 <- get_distance_matrix(dodgr_walk
+                            ,from = dodgr_walk$dict$ref[dodgr_walk_noi]
+                            ,to = dodgr_walk$dict$ref[dodgr_walk_noi]
+                            # ,algorithm = "NBA"
                             ,allcores = TRUE) %>% round()
 
-dist_2 <- get_distance_pair(osmnx_walk
-                            ,from = osmnx_walk$dict$ref[osmnx_walk_noi[orig[x]]]
-                            ,to = osmnx_walk$dict$ref[osmnx_walk_noi[dest[x]]]
-                            ,algorithm = "NBA"
+dist_2 <- get_distance_matrix(osmnx_walk
+                            ,from = osmnx_walk$dict$ref[osmnx_walk_noi]
+                            ,to = osmnx_walk$dict$ref[osmnx_walk_noi]
+                            # ,algorithm = "NBA"
                             ,allcores = TRUE) %>% round()
 
-dist_3 <- get_distance_pair(dodgr_cycle
-                            ,from = dodgr_cycle$dict$ref[dodgr_cycle_noi[orig[x]]]
-                            ,to = dodgr_cycle$dict$ref[dodgr_cycle_noi[dest[x]]]
-                            ,algorithm = "NBA"
+dist_3 <- get_distance_matrix(dodgr_cycle
+                            ,from = dodgr_cycle$dict$ref[dodgr_cycle_noi]
+                            ,to = dodgr_cycle$dict$ref[dodgr_cycle_noi]
+                            # ,algorithm = "NBA"
                             ,allcores = TRUE)%>% round()
 
-dist_4 <- get_distance_pair(osmnx_cycle
-                            ,from = osmnx_cycle$dict$ref[osmnx_cycle_noi[orig[x]]]
-                            ,to = osmnx_cycle$dict$ref[osmnx_cycle_noi[dest[x]]]
-                            ,algorithm = "NBA"
+dist_4 <- get_distance_matrix(osmnx_cycle
+                            ,from = osmnx_cycle$dict$ref[osmnx_cycle_noi]
+                            ,to = osmnx_cycle$dict$ref[osmnx_cycle_noi]
+                            # ,algorithm = "NBA"
                             ,allcores = TRUE)%>% round()
 
-dist_5 <- get_distance_pair(all_network
-                            ,from = all_network$dict$ref[all_network_nodes[orig[x]]]
-                            ,to = all_network$dict$ref[all_network_nodes[dest[x]]]
-                            ,algorithm = "NBA"
+dist_5 <- get_distance_matrix(all_network
+                            ,from = all_network$dict$ref[all_network_nodes]
+                            ,to = all_network$dict$ref[all_network_nodes]
+                            # ,algorithm = "NBA"
                             ,allcores = TRUE)%>% round()
 
-dist_6 <- get_distance_pair(os_cppr_simple
-                            ,from = nn_id[orig[x]]
-                            ,to = nn_id[dest[x]]
-                            ,algorithm = "NBA"
+dist_6 <- get_distance_matrix(os_cppr_simple
+                            ,from = nn_id
+                            ,to = nn_id
+                            # ,algorithm = "NBA"
                             ,allcores = TRUE)
 
+
 ####
-distances <- list("dodgr_walk" = dist_1
-                  ,"osmnx_walk" = dist_2
-                  ,"dodgr_cycle" = dist_3
-                  ,"osmnx_cycle" = dist_4
+distances <- list(#"dodgr_walk" = dist_1
+                  #,"osmnx_walk" = dist_2
+                  "dodgr_cycle" = dist_3
+                  # ,"osmnx_cycle" = dist_4
                   ,"all_network_osm" = dist_5
                   ,"all_network_os" = dist_6)
-# distances <- distances %>% lapply(function(m) `diag<-`(m,london_msoa[x,tip_dist]))
-# list.save(distances, "distances.rds")
 
-lapply(distances,summary)
+distances <- distances %>% lapply(function(m) `diag<-`(m,london_msoa[,tip_dist]))
+
+deltas <- list("delta_dodgr" = delta_dodgr_geom,"delta_osm" = delta_osm_geom,"delta_os" = delta_os_geom)
+
+# lapply(deltas,FUN = function(x) x %>% dim)
+
+distances <- mapply(distances,deltas, FUN = function(mat,delt) (mat[dist_0_interest] + delt[dist_0_interest]))
+
+distances <- as.data.frame(distances)
+
+distances$origin <- london_msoa$geo_code[dist_0_interest[,1]]
+distances$destination <- london_msoa$geo_code[dist_0_interest[,2]]
+distances$euclid <- distances_0[dist_0_interest]
+
+distances <- distances[,c(4:6,1:3)]
+
+distances %>% head()
+distances %>% summary()
+
+distances %>% drop_na() %>% write_csv("distances_tidy.csv")
+
+# list.save(distances, "distances.rds")
 
 {
 par(mfrow = c(3,2)

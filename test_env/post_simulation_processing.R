@@ -157,29 +157,3 @@ outliers_lines <- get_lines(london_msoa[outliers[,1],"centr_geom"] %>% st_as_sf(
 tmap_mode("view")
 outliers_lines %>% qtm() + (london_msoa[outliers[,1],"centr_geom"] %>% st_as_sf(wkt = 1,crs = 4326) %>% qtm()) +
   (osm$coords[match(osm_nodes,osmid),.(x,y)] %>% st_as_sf(coords = c(1,2),crs = 4326) %>% qtm(dots.col = "red"))
-
-### distances 
-# computing the deltas for each networks
-delta_osm <- delta_matrix(osm$coords[match(osm_nodes,osmid),.(x,y)] %>% st_as_sf(coords = c(1,2),crs = 4326)
-                          ,london_msoa[,"centr_geom"] %>% st_as_sf(wkt = 1,crs = 4326))
-
-delta_os <- delta_matrix(os$coords[match(os_nodes,osmid),.(x,y)] %>% st_as_sf(coords = c(1,2),crs = 4326)
-                         ,london_msoa[,"centr_geom"] %>% st_as_sf(wkt = 1,crs = 4326))
-
-delta_dodgr <- delta_matrix(dodgr_cycle$coords[match(dodgr_cycle_nodes,osmid),.(x,y)] %>% st_as_sf(coords = c(1,2),crs = 4326)
-                            ,london_msoa[,"centr_geom"] %>% st_as_sf(wkt = 1,crs = 4326))
-
-# loading the data outiput from the cluster
-distances <- list.load("/Users/ivann/Desktop/CASA/test_env/distances_of_interest/distances.rds") %>% as.data.table()
-
-# recovering the indices of the values to get from the matrices.
-dits_of_interst <- cbind(match(distances$origin,london_msoa$geo_code)
-                         ,match(distances$destination,london_msoa$geo_code))
-
-distances$osm <- distances$osm + delta_osm[dits_of_interst]
-
-distances$dodgr_cycle <- distances$dodgr_cycle + delta_dodgr[dits_of_interst]
-
-distances$os <- distances$os + delta_os[dits_of_interst]
-
-distances %>% drop_na() %>% write_csv("distances_tidy.csv")
