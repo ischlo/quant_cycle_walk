@@ -5,7 +5,7 @@ fig_caption: true
 output: 
   html_document: 
     keep_md: true
-
+    preserve_yaml: false
 ---
 
 
