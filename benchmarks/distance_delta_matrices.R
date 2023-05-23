@@ -73,7 +73,9 @@ osm_dist_matrix_network%>% as.numeric %>% summary
 
 #### OS network setup and distance calculation
 
-os_cppr_data <- list.load("os_network_data.rds")
+# os_cppr_data <- list.load("os_network_data.rds")
+
+os_cppr_simple <- rlist::list.load("Benchmarks/cppr_networks/os_all_graph.rds")
 
 os_cppr_simple <- os_cppr_data$cppr_graph
 nn_id <- os_cppr_simple$coords$osmid[os_cppr_data$nn_ind]
