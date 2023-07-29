@@ -94,7 +94,7 @@ simulation <- function(flows_matrix
                        ,time = FALSE
                        ,n_cores = 3
                        ,cost_fun = "exp") {
-  # run name is a prefix to inclide in the name of saved files
+  # run name is a prefix to include in the name of saved files
 
   if ( !(from %in% colnames(region_data))) return(print("error, provide a existing column with point geometries to 'from'"))
   
@@ -114,6 +114,8 @@ simulation <- function(flows_matrix
   },error = function(e) print(e))
   
   print("created directory")
+  
+  ## Convert to cpp
   
   if (norm == 1) {
     centroid_distance <- norm_p(region_data[,..from] %>% st_as_sf(wkt = from, crs = 4326)
@@ -146,12 +148,15 @@ simulation <- function(flows_matrix
     
     if(is.null(graph_dist_matrix)) {
       
+      
+      # convert to cpp (?)
       centr_node_id_from <- paste0(from,"_id")
       region_data[,centr_node_id_from] <- find_nearest_node_on_graph(graph = graph
                                                                      ,region_data[,..from] %>% st_as_sf(wkt = from, crs = 4326)
                                                                     
       )
       
+      # convert to cpp (?)
       if(!is_null(to)) {
         if((from != to)) {
           centr_node_id_to <- paste0(to,"_id")
@@ -181,6 +186,8 @@ simulation <- function(flows_matrix
     # 
     # print("computed and saved distance matrix")
     
+    
+    # add as paratmeter this threshold (?)
     links_of_interest <- which(centroid_distance < 15000, arr.ind = TRUE)
     
     # links_of_interest %>% list.save("links_of_interest.rds")
@@ -301,11 +308,11 @@ simulation <- function(flows_matrix
   # options : convrging which, for with specified values
   
   if (time) {
-    # converting distance to kilometres
+    # converting distance to time, rough average
     graph_dist_matrix <- graph_dist_matrix/(1000*14)
     range_i <- 0:120
-  } else if (!time) { 
-    # converting distances to time
+  } else { 
+    # converting distances to distance
     range_i <- 1:30
     graph_dist_matrix <- graph_dist_matrix/1000
   }
@@ -340,14 +347,16 @@ simulation <- function(flows_matrix
   # 
   # beta_best_fit <- beta
   
+  
+  # cpp convert
   beta_calib <- foreach::foreach(i = range_i
                                  ,.combine = rbind) %dopar% {
                                    beta <- (0.03*i)+beta_offset
                                    print(paste0("RUNNING MODEL FOR beta = ",beta))
                                    model_run <- run_model(flows = flows_matrix
-                                                    ,distance = graph_dist_matrix
-                                                    ,beta = beta
-                                                    ,type = "exp"       
+                                                              ,distance = graph_dist_matrix
+                                                              ,beta = beta
+                                                              ,type = "exp"       
                                    )
                                    
                                    cbind(beta, model_run$r2,model_run$e_sor)

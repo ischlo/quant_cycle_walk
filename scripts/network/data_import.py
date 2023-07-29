@@ -3,12 +3,11 @@ import numpy as np
 import pandas as pd
 import osmnx as ox
 import geopandas as gpd
-# import gc
 
 ox.config(timeout=9000)
 
 def ready_to_export(data):
-    ''' data is blablabla '''
+    
     
     keep = ['element_type','osmid','geometry','highway','bicycle','foot','cycleway'
             #,'pedestrian'
@@ -24,6 +23,7 @@ def ready_to_export(data):
                       })
     
     return data
+  
 
 # we can calculate basic street network metrics and display average circuity
 # stats = ox.basic_stats(haringey_ox)
@@ -69,14 +69,6 @@ def ready_to_export(data):
 #   #,"foot" : ["yes", "designated","permissive"]
 # }
 
-# area_custom_graph = ox.graph_from_place("Edinburgh, Scotland"
-#                                   ,network_type="all"
-#                                   ,buffer_dist = 20000
-#                                   ,simplify = True
-#                                   ,truncate_by_edge = True
-#                                   )
-# 
-# ox.save_graph_geopackage(area_custom_graph, "scotland_all.gpkg")
 
 area_custom_graph = ox.graph_from_bbox(58.620
                                     ,55.292

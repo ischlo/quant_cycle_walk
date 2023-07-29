@@ -63,8 +63,6 @@ flows <- list.load("../data/flows_london.rds") %>%
 
 #### Simulation ####
 
- #%>% st_as_sf()
-
 city <- city[grepl("Camden",city$geo_name) |
               grepl("Islington",city$geo_name) |
              grepl("City of London",city$geo_name) #|

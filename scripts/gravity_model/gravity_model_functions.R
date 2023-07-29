@@ -2,6 +2,14 @@
 
 
 cost_function <- function(d, beta, type = "exp") {
+
+   
+  # d is the od distance matrix, taking the exponential 
+  # means doing this operation for each individual element 
+  #  with an exponent beta
+  # the type parameter allows to set it to either exp or pow. 
+  #  pow means we use a power function as cost, rather than exponential
+  
   if(type == "exp") {
     exp(-beta*d)
   } else if(type == "pow") {
@@ -13,7 +21,9 @@ cost_function <- function(d, beta, type = "exp") {
 
 r_2 <- function(d, f) cor(d %>% as.numeric()
                           ,f %>% as.numeric())^2
-r <- function(d, f) sqrt(r_2(d,f))
+
+r <- function(d, f) cor(d %>% as.numeric()
+                        ,f %>% as.numeric())
 
 rmse <- function(d,f) sum((d-f)^2)
 
@@ -63,18 +73,19 @@ run_model <- function(flows
                          }
   
   print("model run: over")
-  e_sor <- e_sorensen(flows,flows_model) %>% as.numeric()
-  print(paste0("E_sor = ",e_sor))
-  r2 <- r_2(flows_model,flows) %>% as.numeric()
-  print(paste0("r2 = ",r2))
-  RMSE <- rmse(flows_model,flows) %>% as.numeric()
-  print(paste0("RMSE = ",RMSE))
+  # e_sor <- e_sorensen(flows,flows_model) %>% as.numeric()
+  # print(paste0("E_sor = ",e_sor))
+  # r2 <- r_2(flows_model,flows) %>% as.numeric()
+  # print(paste0("r2 = ",r2))
+  # RMSE <- rmse(flows_model,flows) %>% as.numeric()
+  # print(paste0("RMSE = ",RMSE))
   
   list("values" = flows_model
-       ,"r2" = r2
-       ,"rmse" = RMSE
+       # ,"r2" = r2
+       # ,"rmse" = RMSE
        ,"calib" = A_B$e
-       ,"e_sor" = e_sor)
+       # ,"e_sor" = e_sor
+       )
   
 }
 
