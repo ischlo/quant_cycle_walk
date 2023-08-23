@@ -1,4 +1,4 @@
-Repository description \[UNDER MAKING\]
+Repository description
 ================
 Ivann Schlosser
 
@@ -119,19 +119,14 @@ versions used with the `renv::restore()` command, assuming
 [`renv`](https://rstudio.github.io/renv/articles/renv.html) is
 installed.
 
-The final step is to download the two packages that developed during
-this work, they are on github, and not yet on CRAN, one might not even
-end up there as it contains a few support functions that i found useful
-for my own workflows.  
-To download them, run:
-
-``` r
-# support functions for various tasks
-remotes::install_github('ischlo/Btoolkit')
-
-# fast and efficient spatial interaction models.
-remotes::install_github('ischlo/cppSim')
-```
+<!-- The final step is to download the two packages that developed during this work, they are on github, and not yet on CRAN, one might not even end up there as it contains a few support functions that were useful for certain workflows.   -->
+<!-- To download them, run: -->
+<!-- ```{r} -->
+<!-- # support functions for various tasks -->
+<!-- remotes::install_github('ischlo/Btoolkit') -->
+<!-- # fast and efficient spatial interaction models. -->
+<!-- remotes::install_github('ischlo/cppSim') -->
+<!-- ``` -->
 
 # Images
 
