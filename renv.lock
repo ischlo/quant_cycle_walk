@@ -172,24 +172,6 @@
       ],
       "Hash": "4237febbf15bffc2819089c3f1b735fc"
     },
-    "RSQLite": {
-      "Package": "RSQLite",
-      "Version": "2.3.1",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "DBI",
-        "R",
-        "bit64",
-        "blob",
-        "cpp11",
-        "memoise",
-        "methods",
-        "pkgconfig",
-        "plogr"
-      ],
-      "Hash": "207c90cd5438a1f596da2cd54c606fee"
-    },
     "Rcpp": {
       "Package": "Rcpp",
       "Version": "1.0.11",
@@ -401,34 +383,6 @@
         "utils"
       ],
       "Hash": "a704d52e87822191b42c715c568f96dd"
-    },
-    "bikedata": {
-      "Package": "bikedata",
-      "Version": "0.2.5.045",
-      "Source": "GitHub",
-      "RemoteType": "github",
-      "RemoteHost": "api.github.com",
-      "RemoteRepo": "bikedata",
-      "RemoteUsername": "ropensci",
-      "RemoteRef": "HEAD",
-      "RemoteSha": "b2b4a9801cedcdb7333795079660ebd814da55cc",
-      "Requirements": [
-        "BH",
-        "DBI",
-        "R",
-        "RSQLite",
-        "Rcpp",
-        "brio",
-        "httr",
-        "lubridate",
-        "magrittr",
-        "methods",
-        "readxl",
-        "reshape2",
-        "tibble",
-        "xml2"
-      ],
-      "Hash": "cbacc7afe07f8908f3b8ea31f9b1cb0c"
     },
     "bit": {
       "Package": "bit",
@@ -2160,13 +2114,6 @@
       ],
       "Hash": "6b0c222c5071efe0f3baf3dae9aa40e2"
     },
-    "plogr": {
-      "Package": "plogr",
-      "Version": "0.2.0",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "09eb987710984fc2905c7129c7d85e65"
-    },
     "plotly": {
       "Package": "plotly",
       "Version": "4.10.1",
@@ -2434,20 +2381,6 @@
         "tibble"
       ],
       "Hash": "76c9e04c712a05848ae7a23d2f170a40"
-    },
-    "remotes": {
-      "Package": "remotes",
-      "Version": "2.4.2.1",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "R",
-        "methods",
-        "stats",
-        "tools",
-        "utils"
-      ],
-      "Hash": "63d15047eb239f95160112bcadc4fcb9"
     },
     "renv": {
       "Package": "renv",
