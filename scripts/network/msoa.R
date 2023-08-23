@@ -1,3 +1,7 @@
+require(pct)
+require(sf)
+require(data.table)
+require(rlist)
 #### MSOAs summary stats for england ####
 # gb_bound_file <-  file.path(data_folder
 #                             ,"bdline_gml3_gb"
@@ -11,7 +15,7 @@
 
 # postcode_la <- fread(file.path(data_folder,"postcodetola.csv"))
 # 
-# postcode_la %>% head()
+# postcode_la |> head()
 # 
 # postcode_la <- NULL
 
@@ -19,8 +23,8 @@
 # 
 # gb_sectors$name
 
-# regions <- pct_regions_lookup %>%
-#   filter(region_name == "london") %>%
+# regions <- pct_regions_lookup |>
+#   filter(region_name == "london") |>
 #   pull(lad16nm)
 # 
 # england_zones <- get_pct(purpose = "commute"
@@ -29,37 +33,40 @@
 #                          ,national = TRUE
 # )
 # 
-# england_zones <- england_zones %>% st_make_valid()
+# england_zones <- england_zones |> st_make_valid()
 # 
-# england_zones <-england_zones %>% as.data.table()
+# england_zones <-england_zones |> as.data.table()
 # 
-# england_zones %>% colnames()
+# england_zones |> colnames()
 # 
 # england_centroids <- england_zones[,.(geo_code,geo_name,geom = st_centroid(geometry))]
 
 # get msoa bounndaries data from pct
 
-london_zones <- get_pct(region = "london"
+london_zones <- pct::get_pct(region = "london"
                         ,purpose = "commute"
                         ,geography = "msoa"
                         ,layer = "z"
                         #,national = TRUE
 )
 
-london_zones <- london_zones %>% st_make_valid() 
+london_zones <- london_zones |> sf::st_make_valid() 
 
-london_zones <- london_zones %>% data.table()
+london_zones <- london_zones |> data.table()
 
-london_zones |> rlist::list.load('data/london_msoa.rds')
+london_zones <- london_zones[,.(geo_code,geo_name,geometry = sf::st_geometry(geometry))]
+
+london_zones |> rlist::list.save('data/london_msoa.rds')
 
 # london_zones[,"area"] <- london_zones[, lapply(.SD, st_area), .SDcols = c("geometry")]
 # 
+# there seem to be bugs down the way when calculating areas, mayber do it now:
 # london_zones[,"typ_dist"] <- london_zones[, .(typ_dist = sqrt(area))]
 # 
-# london_zones %>% colnames()
+# london_zones |> colnames()
 
 # # england
-# typ_dist_hist <- london_zones[,typ_dist] %>% hist(breaks = 100
+# typ_dist_hist <- london_zones[,typ_dist] |> hist(breaks = 100
 #                                                   ,main = "Typical distance distribution, MSOA level"
 #                                                   ,xlab = "meters"
 #                                                   ,ylab = "density"
@@ -67,7 +74,7 @@ london_zones |> rlist::list.load('data/london_msoa.rds')
 # 
 # tmap_mode("plot")
 # 
-# transport_use_map <- london_zones %>% st_as_sf() %>% tm_shape() + 
+# transport_use_map <- london_zones |> st_as_sf() |> tm_shape() + 
 #   tm_polygons(col = c("bicycle","car_driver","train_tube","bus")
 #               ,title = ""
 #               ,n=7

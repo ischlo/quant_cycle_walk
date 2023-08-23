@@ -11,6 +11,30 @@ make_cppr_lines <- function(paths, graph, crs = 4326) {
     st_as_sf()
 }
 
+#### Very useful function to find the nearest node in the network to any geographic coordinate.
+# Useful for all the routing tasks
+
+
+find_nearest_node_on_graph <- function(graph, points_data = NULL,return_id = TRUE,...) {
+  if(is.null(points_data)) stop("Provide sf spatial points to link to the network.")
+  if(nrow(points_data)>1000) cat('Points data set is big, expect poor performance...')
+  
+  points_sf <- sf::st_as_sf(points_data,...)
+  
+  if(inherits(graph, c('data.table','data.frame'))){
+    node_ind <- sf::st_nearest_feature(points_sf, graph |> sf::st_as_sf(coords=c('x','y'),crs = 4326))
+    if(return_id) return(graph$osmid[node_ind])
+    else return(node_ind)
+    
+  } else if (inherits(graph,'list')){
+    node_ind <- sf::st_nearest_feature(points_sf, graph$coords |> sf::st_as_sf(coords=c('x','y'),crs = 4326))
+    if(return_id) return(graph$coords$osmid[node_ind])
+    else return(node_ind)
+  }
+  
+}
+
+
 
 #### extract the largest connected component from a set of nodes.
 
@@ -23,7 +47,10 @@ get_lcc <- function(ways, graph_mode = "weak") {
   
   igraph_ways <- igraph::graph_from_data_frame(ways[,.(from,to)],directed = FALSE)
   
-  if(igraph_ways |> igraph::is_connected(mode = graph_mode)) {stop("Already a connected graph")}
+  if(igraph_ways |> igraph::is_connected(mode = graph_mode)) { 
+    cat('Graph is connected') 
+    return(ways) 
+    }
   
   nodes_comp <- igraph::components(igraph_ways,mode = graph_mode)
   
@@ -114,4 +141,5 @@ graph_debug_function <- function(graph,node,lines,buffer = 500){
     qtm(graph$coords[node,] |> st_as_sf(crs = 4326,coords = c(2,3))
         ,dots.col = "red")
 }
+
 
