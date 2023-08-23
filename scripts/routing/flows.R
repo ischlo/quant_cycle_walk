@@ -1,3 +1,6 @@
+# THIS SCRIPT IS SLIGHTLY OUTDATED
+# IT PRODUCES SOME SUMMARY INFORMATION ON THE FLOWS, 
+
 
 
 flows_general <- data.table::fread(file.path(data_folder,"wu03ew_msoa.csv"))
