@@ -1,3 +1,4 @@
+# not an important script, it does some visualisations that did not end up used. 
 library(rlist)
 library(tidyverse)
 library(microbenchmark)
@@ -17,16 +18,16 @@ city <- list.load("../data/london_msoa.rds") %>%
 flows <- list.load("../data/flows_london.rds") %>%
   as.data.table()
 
-graph_dist_matrix <- list.load("/Users/ivann/Desktop/CASA/data/dist_matrix_london.rds")
+graph_dist_matrix <- list.load("../data/dist_matrix_london.rds")
 
-flows_matrix <- list.load("/Users/ivann/Desktop/CASA/gravity_model_files/flows_matrix.rds")
+flows_matrix <- list.load("../gravity_model_files/flows_matrix.rds")
 
 flows_matrix %>% typeof
 
-files <- function(name) {paste0("/Users/ivann/Desktop/CASA/test_env/",name,".rds")}
+files <- function(name) {paste0(name,".rds")}
 
 outputs <- c("norm2_commute/norm2_commute_best_fit"
-             ,"norm2_standard/norm2_standard_best_fit"
+             ,"norm2_geom/norm2_geom_best_fit"
              ,"norm2_network/norm2_network_best_fit"
              ,"osm_norm2_commute/osm_norm2_commute_best_fit"
              ,"osm_norm2_standard/osm_norm2_standard_best_fit"
@@ -45,7 +46,7 @@ fits <- lapply(outputs, function(x) {list.load(files(x))})
 par(mfrow = c(2,3))
 fits %>% mapply(names,FUN = function(fit_list,name)  {
   print(name)
-  plot(fit_list$values
+  plot(fit_list$best_fit
        ,flows_matrix
        ,log = "xy"
        ,pch = 1
@@ -56,12 +57,12 @@ fits %>% mapply(names,FUN = function(fit_list,name)  {
        ,xlab = ""
        ,main = name
   )
-  lines(1:max(fit_list$values),1:max(fit_list$values)
+  lines(1:max(fit_list$best_fit),1:max(fit_list$best_fit)
         ,col = "darkred")
 })
 par(mfrow = c(1,1))
 
-best_fit <- list.load("/Users/ivann/Desktop/CASA/test_env/osm_norm2_commute/osm_norm2_commute_best_fit.rds")
+best_fit <- list.load("osm_norm2_commute/osm_norm2_commute_best_fit.rds")
 
 plot(best_fit$values
      ,flows_matrix
@@ -111,49 +112,49 @@ fits %>% mapply(names,FUN = function(fit_list,name)  {
 # par(mfrow = c(1,1))
 
 #### computing distances from nodes. 
-
-# ref dist
-london_msoa <- list.load("/Users/ivann/Desktop/CASA/data/london_msoa.rds") %>% as.data.table()
-
-euclid_dist <- london_msoa[,"centr_geom"] %>% 
-  st_as_sf(wkt = 1,crs = 4326) %>% 
-  st_distance() %>% round() %>% set_units(NULL)
-
-euclid_dist <- `diag<-`(euclid_dist
-                        ,delta_matrix(osm$coords[match(osm_nodes,osmid),.(x,y)] %>% st_as_sf(coords = c(1,2),crs = 4326)
-                                      ,london_msoa[,"centr_geom"] %>% st_as_sf(wkt = 1,crs = 4326)
-                                      ,type = "vec")
-)
-
-# data 
-osm <- list.load("/Users/ivann/Desktop/CASA/benchmarks/osm_all_graph.rds")
-osm_nodes <- list.load("/Users/ivann/Desktop/CASA/benchmarks/osm_all_nodes.rds")
-
-os_data <- list.load("/Users/ivann/Desktop/CASA/benchmarks/os_network_data.rds")
-os <- os_data$cppr_graph
-os_nodes <- os$coords$osmid[os_data$nn_ind]
-
-dodgr_cycle <- list.load("/Users/ivann/Desktop/CASA/benchmarks/dodgr_cycle_graph.rds")
-dodgr_cycle_nodes <- list.load("/Users/ivann/Desktop/CASA/benchmarks/dodgr_cycle_noi.rds")
-
-osm_euclid_dist <- osm$coords[match(osm_nodes,osmid),.(x,y)] %>% 
-  st_as_sf(coords = c(1,2),crs = 4326) %>% 
-  st_distance() %>% round %>% set_units(NULL)
-
-which(euclid_dist < 15000, arr.ind = TRUE) %>% nrow()
-
-delta %>% hist()
-
-comparison <- ((delta + osm_euclid_dist)/euclid_dist)
-
-comparison %>% as.numeric() %>% hist()
-
-## looking at outliers
-outliers <- which(comparison<1,arr.ind = TRUE)
-
-outliers_lines <- get_lines(london_msoa[outliers[,1],"centr_geom"] %>% st_as_sf(wkt = 1,crs = 4326)
-          ,to = london_msoa[outliers[,2],"centr_geom"] %>% st_as_sf(wkt = 1,crs = 4326)) 
-
-tmap_mode("view")
-outliers_lines %>% qtm() + (london_msoa[outliers[,1],"centr_geom"] %>% st_as_sf(wkt = 1,crs = 4326) %>% qtm()) +
-  (osm$coords[match(osm_nodes,osmid),.(x,y)] %>% st_as_sf(coords = c(1,2),crs = 4326) %>% qtm(dots.col = "red"))
+# 
+# # ref dist
+# london_msoa <- list.load("/Users/ivann/Desktop/CASA/data/london_msoa.rds") %>% as.data.table()
+# 
+# euclid_dist <- london_msoa[,"centr_geom"] %>% 
+#   st_as_sf(wkt = 1,crs = 4326) %>% 
+#   st_distance() %>% round() %>% set_units(NULL)
+# 
+# euclid_dist <- `diag<-`(euclid_dist
+#                         ,delta_matrix(osm$coords[match(osm_nodes,osmid),.(x,y)] %>% st_as_sf(coords = c(1,2),crs = 4326)
+#                                       ,london_msoa[,"centr_geom"] %>% st_as_sf(wkt = 1,crs = 4326)
+#                                       ,type = "vec")
+# )
+# 
+# # data 
+# osm <- list.load("../benchmarks/osm_all_graph.rds")
+# osm_nodes <- list.load("../benchmarks/osm_all_nodes.rds")
+# 
+# os_data <- list.load("../benchmarks/os_network_data.rds")
+# os <- os_data$cppr_graph
+# os_nodes <- os$coords$osmid[os_data$nn_ind]
+# 
+# dodgr_cycle <- list.load("../benchmarks/dodgr_cycle_graph.rds")
+# dodgr_cycle_nodes <- list.load("../benchmarks/dodgr_cycle_noi.rds")
+# 
+# osm_euclid_dist <- osm$coords[match(osm_nodes,osmid),.(x,y)] %>% 
+#   st_as_sf(coords = c(1,2),crs = 4326) %>% 
+#   st_distance() %>% round %>% set_units(NULL)
+# 
+# which(euclid_dist < 15000, arr.ind = TRUE) %>% nrow()
+# 
+# delta %>% hist()
+# 
+# comparison <- ((delta + osm_euclid_dist)/euclid_dist)
+# 
+# comparison %>% as.numeric() %>% hist()
+# 
+# ## looking at outliers
+# outliers <- which(comparison<1,arr.ind = TRUE)
+# 
+# outliers_lines <- get_lines(london_msoa[outliers[,1],"centr_geom"] %>% st_as_sf(wkt = 1,crs = 4326)
+#           ,to = london_msoa[outliers[,2],"centr_geom"] %>% st_as_sf(wkt = 1,crs = 4326)) 
+# 
+# tmap_mode("view")
+# outliers_lines %>% qtm() + (london_msoa[outliers[,1],"centr_geom"] %>% st_as_sf(wkt = 1,crs = 4326) %>% qtm()) +
+#   (osm$coords[match(osm_nodes,osmid),.(x,y)] %>% st_as_sf(coords = c(1,2),crs = 4326) %>% qtm(dots.col = "red"))
