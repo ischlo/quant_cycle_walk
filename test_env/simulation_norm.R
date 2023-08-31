@@ -1,9 +1,7 @@
 # simulation of the model without networks
 # the basic case of runnung a SIM with simple crow fly distances is also considered and shown in the results. 
 
-
 # source("/Users/ivann/Desktop/CASA/efficient_distance.R")
-
 norm2_geom <- london_msoa[,"centr_geom"] %>% 
   st_as_sf(wkt =1, crs = 4326) %>% 
   st_distance(by_element = FALSE)

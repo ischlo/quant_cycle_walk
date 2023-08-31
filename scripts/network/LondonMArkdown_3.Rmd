@@ -1,0 +1,512 @@
+---
+title: "MSOA walking distances"
+output:
+  html_document:
+    df_print: paged
+---
+```{r}
+knitr::opts_chunk$set(eval = FALSE
+                      ,include = TRUE
+                      ,echo = TRUE)
+#library(osmextract)
+library(lwgeom)
+library(dodgr)
+library(osmdata)
+library(pct)
+library(dplyr)
+library(ggplot2)
+library(sf)
+library(tmap)
+library(tidyverse)
+library(units)
+library(reshape2)
+```
+
+1. LOADING DATA: 
+
+1.1 Download MSOA boundaries
+```{r}
+#Polygons:
+london_msoa = get_pct_zones(region = "london", geography = "msoa")
+```
+
+ 1.2 Download OS Open Road data:
+```{r}
+#getwd()
+London_OS <- sf::read_sf("oproad_essh_gb/data/TQ_RoadLink.shp")
+London_OS <- st_transform(London_OS, st_crs(london_msoa))
+bbox_London<- st_bbox(london_msoa)
+
+#Spatial subsetting using MSOA bounding box:
+London_OS <- London_OS[st_as_sfc(bbox_London), ]  
+```
+ 1.3 Load OSM roads:
+```{r}
+# From England dataset, not greater london because of boundary effect
+
+#osm_roads <- sf::read_sf("england-latest-free/gis_osm_roads_free_1.shp")
+#osm_roads <- st_transform(osm_roads, st_crs(london_msoa))
+#London_OSM <- osm_roads[st_as_sfc(bbox_London), ] 
+#st_write(London_OSM, getwd(), "London_OSM.shp",driver = "ESRI Shapefile")
+
+London_OSM <- sf::read_sf("London_OSM.shp")
+London_OSM <- st_transform(London_OSM, st_crs(london_msoa))
+
+```
+
+```{r}
+#unique(London_OSM$fclass)
+London_OSM=London_OSM %>% dplyr::filter(!fclass %in% c("motorway_link", "motorway"))
+```
+
+
+2. OD POINTS:
+
+2.1 MSOA centroids (nearest to OSM residential streets)
+
+```{r}
+#get MSOA centroids
+msoa_centroid_geom <- london_msoa %>% 
+  st_centroid() 
+
+# Centroids nearest to OSM net points
+London_OD=London_OSM %>% dplyr::filter(fclass %in% c("residential", "living_street"))
+
+London_OD_ptns = st_cast(London_OD, "POINT")
+
+nearest=st_nearest_feature(msoa_centroid_geom, London_OD_ptns)
+london_centroid_geom=London_OD_ptns[nearest,]
+london_centroid_geom$geo_code=msoa_centroid_geom$geo_code
+london_centroid_geom=london_centroid_geom %>% select("geo_code", "geometry","osm_id")
+
+
+#centroids geo codes 
+geo_code=data.frame(geo=london_centroid_geom$geo_code,idgeo=(1:length(london_centroid_geom$geo_code)))
+
+# get coords:
+london_centroid_coords=london_centroid_geom%>% 
+    st_coordinates()
+
+
+st_write(london_centroid_geom, "C:/Users/vales/OneDrive/Desktop/Pedestrian network/data", "london_centroid_geom.shp",driver = "ESRI Shapefile",append=FALSE)
+write.csv(london_centroid_coords,"C:/Users/vales/OneDrive/Desktop/Pedestrian network/data/london_centroid_coords.csv", row.names = FALSE)
+```
+
+
+2.2 Sample of nodes (from OS layer)
+```{r}
+#edges within msoa
+london_OSM_inMsoa=st_join(London_OD, london_msoa) %>% select("osm_id", "fclass", "geometry", "geo_code")
+
+# points within edges
+nodes_london_OSM_inMsoa <- london_OSM_inMsoa %>%
+  st_coordinates() %>%
+  as_tibble() 
+
+# as WKT geometry column
+nodes_london_OSM_inMsoa=nodes_london_OSM_inMsoa%>% 
+  st_as_sf(coords = c("X", "Y"))
+
+st_crs(nodes_london_OSM_inMsoa) <- st_crs(london_msoa) 
+
+# select random %
+sample_node=nodes_london_OSM_inMsoa[sample(length(nodes_london_OSM_inMsoa$geometry),(length(nodes_london_OSM_inMsoa$geometry)*0.03)),]
+
+# Nodes within msoa boundaries
+sample_node_within=sample_node[london_msoa,]
+
+sample_node_within=st_join(sample_node_within, london_msoa) %>% select("L1", "geometry", "geo_code")
+
+
+sample_node_coords <- sample_node_within %>%
+  mutate(lat = unlist(map(sample_node_within$geometry,1)),
+         long = unlist(map(sample_node_within$geometry,2)))
+
+sample_node_coords=as.data.frame(sample_node_coords)
+sample_node_coords=sample_node_coords[,c(3,4,5)]
+colnames(sample_node_coords)=c("geo_code","X","Y")
+sample_node_coords$id  <- 1:nrow(sample_node_coords)
+
+write.csv(sample_node_coords,"data/sample_nodes_osm.csv", row.names = FALSE)
+
+st_write(sample_node_within, "C:/Users/vales/OneDrive/Desktop/Pedestrian network/data", "sample_node_within_geom.shp",driver = "ESRI Shapefile",append=FALSE)
+
+```
+
+
+```{r}
+tmap_mode("view")
+qtm(london_msoa, fill=NULL, borders = "red")+
+  qtm(sample_node_within, symbols.col = "red", symbols.size=0.01)
+
+```
+3. EUCLIDIAN DISTANCES
+
+
+3.0 Reads OD points 
+```{r}
+
+#centroids:
+london_centroid_coords <- read.csv(file = 'data/london_centroid_coords.csv')
+london_centroid_geom <- sf::read_sf("data/london_centroid_geom.shp")
+
+#sample nodes:
+sample_node_coords <- read.csv(file = 'data/sample_nodes_osm.csv')
+sample_node_within <- sf::read_sf("data/sample_node_within_geom.shp")
+
+#geo_code:
+geo_code=data.frame(geo=london_centroid_geom$geo_code,idgeo=(1:length(london_centroid_geom$geo_code)))
+```
+
+
+3.1 MSOA centroids:
+
+```{r}
+Centroid_eu <- london_centroid_geom %>% 
+  st_distance() %>%
+  set_units(NULL)
+
+# To dataframe
+Centroid_eu_df=setNames(melt(Centroid_eu), c('rows', 'cols', 'cents_eu'))
+
+Centroid_eu_df <- merge(Centroid_eu_df,geo_code, by.x = "rows",by.y = "idgeo")
+Centroid_eu_df <- merge(Centroid_eu_df,geo_code, by.x = "cols",by.y = "idgeo")
+colnames(Centroid_eu_df)<-c( "cols", "rows", "cents_eu","geo_code_r","geo_code_c")
+```
+
+3.2 Sample nodes:
+```{r}
+sample_node_within=sample_node_within[,2:3]
+head(sample_node_within)
+
+Nodes_eu <- sample_node_within %>% 
+  st_distance() %>%
+  set_units(NULL)
+
+colnames(Nodes_eu) <- c(sample_node_within$geo_code)
+rownames(Nodes_eu) <- c(sample_node_within$geo_code)
+
+
+
+# To dataframe
+Nodes_eu_df=setNames(melt(Nodes_eu), c('geo_code_r', 'geo_code_c', 'nodes_eu'))
+
+Nodes_eu_df_mean=Nodes_eu_df %>%
+  group_by(geo_code_r , geo_code_c) %>%
+  summarise(nodes_eu_mean=(mean(nodes_eu)),.groups = 'drop')
+
+head(Nodes_eu_df_mean)
+
+```
+
+
+
+
+```{r}
+euclidian=merge(Nodes_eu_df_mean, Centroid_eu_df, by=c("geo_code_r","geo_code_c"))
+euclidian=euclidian %>% select("geo_code_r","geo_code_c","cents_eu","nodes_eu_mean")
+
+write.csv(euclidian,"data/euclidian.csv", row.names = FALSE)
+```
+
+
+4. COMPUTE NETWORK DISTANCES
+
+4.1 Network distances between centroids
+
+4.1.1 OS net between centroids:
+
+```{r}
+# Convert OS to 'dodgr' network:
+
+# specification of weighting profile:
+colnm <- "formOfWay" # name of column used to determine weights
+wts <- data.frame (name = "custom",
+                   way = unique (London_OS [[colnm]]),
+                   value = c (1, 1, 1, 1,1,1))
+
+London_OS_net <- weight_streetnet (London_OS, wt_profile = wts,
+                                   type_col = colnm, id_col = "identifier")
+# 'id_col' tells the function which column to use to attribute IDs of ways
+
+London_OS_net <- London_OS_net[London_OS_net$component == 1, ]
+
+```
+
+```{r}
+# Compute distances:
+
+centroid_net_OS <- dodgr_dists(London_OS_net
+                               ,from = london_centroid_coords
+                               ,to = london_centroid_coords
+                               ,shortest = TRUE
+                               ,quiet = FALSE
+                               ,parallel=TRUE)
+
+
+
+# To dataframe
+Centroid_net_OS_df=setNames(melt(centroid_net_OS), c('rows', 'cols', 'cents_os'))
+Centroid_net_OS_df$id  <- 1:nrow(Centroid_net_OS_df)
+
+Centroid_net_OS_df <- merge(Centroid_net_OS_df,geo_code, by.x = "rows",by.y = "idgeo")
+Centroid_net_OS_df <- merge(Centroid_net_OS_df,geo_code, by.x = "cols",by.y = "idgeo")
+colnames(Centroid_net_OS_df)<-c( "cols", "rows", "cents_os","id" ,"geo_code_r","geo_code_c")
+
+```
+
+
+4.1.2 OSM net between centroids:
+```{r}
+#Create dodgr network
+
+# specification of weighting profile:
+colnm <- "fclass" # name of column used to determine weights
+wts <- data.frame (name = "custom",
+                   way = unique (London_OSM [[colnm]]),
+                   value = c (rep(1, each = length(unique(London_OSM$fclass)))))
+
+London_OSM_net <- weight_streetnet (London_OSM, wt_profile = wts,
+                                   type_col = colnm, id_col = "identifier")
+# 'id_col' tells the function which column to use to attribute IDs of ways
+
+
+London_OSM_net <- London_OSM_net[London_OSM_net$component == 1, ]
+```
+
+
+```{r}
+
+#Compute distances: 
+centroid_net_OSM <- dodgr_dists(London_OSM_net
+                               ,from = london_centroid_coords
+                               ,to = london_centroid_coords
+                               ,shortest = TRUE
+                               ,quiet = FALSE
+                               ,parallel=TRUE)
+
+
+# To dataframe
+Centroid_net_OSM_df=setNames(melt(centroid_net_OSM), c('rows', 'cols', 'cents_osm'))
+Centroid_net_OSM_df$id  <- 1:nrow(Centroid_net_OSM_df)
+
+Centroid_net_OSM_df <- merge(Centroid_net_OSM_df,geo_code, by.x = "rows",by.y = "idgeo")
+Centroid_net_OSM_df <- merge(Centroid_net_OSM_df,geo_code, by.x = "cols",by.y = "idgeo")
+colnames(Centroid_net_OSM_df)<-c( "cols", "rows", "cents_osm","id" ,"geo_code_r","geo_code_c")
+
+```
+
+```{r}
+Centroids_net=merge(Centroid_net_OS_df, Centroid_net_OSM_df, by=c("geo_code_r","geo_code_c"))
+Centroids_net=Centroids_net %>% select("geo_code_r","geo_code_c","cents_os","cents_osm")
+
+write.csv(Centroids_net,"data/Centroids_net.csv", row.names = FALSE)
+```
+
+
+4.2 Network distances between sample nodes
+
+4.2.1 OS net between sample nodes:
+```{r}
+gc()
+memory.limit(size=30000)
+
+nodes_net_OS <- dodgr_dists(London_OS_net
+                            ,from = sample_node_coords
+                            ,to = sample_node_coords
+                            ,shortest = TRUE
+                            ,quiet = FALSE
+                            ,parallel=TRUE)
+
+
+
+colnames(nodes_net_OS) <- c(sample_node_coords$geo_code)
+rownames(nodes_net_OS) <- c(sample_node_coords$geo_code)
+
+
+
+# Nodes distance from matrix to dataframe:
+Nodes_net_OS_df=setNames(melt(nodes_net_OS), c('geo_code_r', 'geo_code_c', 'nodes_os'))
+
+head(Nodes_net_OS_df)
+
+
+
+Nodes_net_OS_df_mean=Nodes_net_OS_df %>%
+  group_by(geo_code_r , geo_code_c) %>%
+  summarise(nodes_os_mean=(mean(nodes_os)),.groups = 'drop')
+
+head(Nodes_net_OS_df_mean)
+
+
+write.csv(Nodes_net_OS_df_mean,"data/Nodes_net_OS_df_mean.csv", row.names = FALSE)
+```
+
+
+4.2.2 OSM net between sample nodes:
+```{r}
+gc()
+memory.limit(size=50000)
+
+nodes_net_OSM <- dodgr_dists(London_OSM_net
+                            ,from = sample_node_coords
+                            ,to = sample_node_coords
+                            ,shortest = TRUE
+                            ,quiet = FALSE
+                            ,parallel=TRUE)
+
+colnames(nodes_net_OSM) <- c(sample_node_coords$geo_code)
+rownames(nodes_net_OSM) <- c(sample_node_coords$geo_code)
+
+
+# Nodes distance from matrix to dataframe:
+Nodes_net_OSM_df=setNames(melt(nodes_net_OSM), c('geo_code_r', 'geo_code_c', 'nodes_osm'))
+
+
+
+
+#Average distances between nodes
+Nodes_net_OSM_df_mean=Nodes_net_OSM_df %>%
+  group_by(geo_code_r , geo_code_c) %>%
+  summarise(nodes_osm_mean=(mean(nodes_osm)),.groups = 'drop')
+
+head(Nodes_net_OSM_df_mean)
+
+
+
+
+write.csv(Nodes_net_OSM_df_mean,"data/Nodes_net_OSM_df_mean.csv", row.names = FALSE)
+```
+
+```{r}
+
+#merge sample nodes_net distances:
+nodes_net=merge(Nodes_net_OSM_df_mean, Nodes_net_OS_df_mean, by=c("geo_code_r","geo_code_c"))
+
+#merge net distances
+all_net=merge(Centroids_net, nodes_net, by=c("geo_code_r","geo_code_c"))
+
+
+#merge all distances
+all_distances=merge(all_net, euclidian, by=c("geo_code_r","geo_code_c"))
+
+head(all_distances)
+
+write.csv(all_distances,"data/all_distances.csv", row.names = FALSE)
+
+```
+
+
+5. WEIGHTED CENTROIDS
+```{r}
+library(data.table)
+library(jsonlite)
+
+msoa_wcent <- read_json("msoa_pop_weighted.geojson"
+                  ,simplifyVector = TRUE)
+
+msoa_wcent <- msoa_wcent$features
+
+msoa_wcent_geom <- msoa_wcent$geometry$coordinates %>%
+  lapply(st_point) %>%
+  st_sfc(crs = 4326) %>%
+  st_sf()
+
+msoa_wcent_geom$geo_code=msoa_wcent$properties$msoa11cd
+
+
+
+# Centroids nearest to OSM net points
+London_OD=London_OSM %>% dplyr::filter(fclass %in% c("residential", "living_street"))
+
+London_OD_ptns = st_cast(London_OD, "POINT")
+nearest=st_nearest_feature(msoa_wcent_geom, London_OD_ptns)
+w_centroid_geom=London_OD_ptns[nearest,]
+w_centroid_geom$geo_code=msoa_wcent_geom$geo_code
+w_centroid_geom=w_centroid_geom %>% select("geo_code", "geometry","osm_id")
+
+#centroids geo codes 
+geo_code=data.frame(geo=w_centroid_geom$geo_code,idgeo=(1:length(w_centroid_geom$geo_code)))
+
+# get coords:
+w_centroid_coords=w_centroid_geom%>% 
+    st_coordinates()
+
+
+st_write(w_centroid_geom, "C:/Users/vales/OneDrive/Desktop/Pedestrian network/data", "w_centroid_geom.shp",driver = "ESRI Shapefile",append=FALSE)
+write.csv(w_centroid_coords,"C:/Users/vales/OneDrive/Desktop/Pedestrian network/data/w_centroid_coords.csv", row.names = FALSE)
+```
+5.1 Euclidian distances:
+```{r}
+w_centroid_eu <- w_centroid_geom %>% 
+  st_distance() %>%
+  set_units(NULL)
+
+# To dataframe
+w_centroid_eu_df=setNames(melt(w_centroid_eu), c('rows', 'cols', 'w_cents_eu'))
+
+w_centroid_eu_df <- merge(w_centroid_eu_df,geo_code, by.x = "rows",by.y = "idgeo")
+w_centroid_eu_df <- merge(w_centroid_eu_df,geo_code, by.x = "cols",by.y = "idgeo")
+colnames(w_centroid_eu_df)<-c( "cols", "rows", "w_cents_eu","geo_code_r","geo_code_c")
+```
+5.2 Net distances:
+```{r}
+
+w_centroid_net_OS <- dodgr_dists(London_OS_net
+                               ,from = w_centroid_coords
+                               ,to = w_centroid_coords
+                               ,shortest = TRUE
+                               ,quiet = FALSE
+                               ,parallel=TRUE)
+
+
+
+# To dataframe
+w_centroid_net_OS_df=setNames(melt(w_centroid_net_OS), c('rows', 'cols', 'w_cents_os'))
+w_centroid_net_OS_df$id  <- 1:nrow(w_centroid_net_OS_df)
+
+w_centroid_net_OS_df <- merge(w_centroid_net_OS_df,geo_code, by.x = "rows",by.y = "idgeo")
+w_centroid_net_OS_df <- merge(w_centroid_net_OS_df,geo_code, by.x = "cols",by.y = "idgeo")
+colnames(w_centroid_net_OS_df)<-c( "cols", "rows", "w_cents_os","id" ,"geo_code_r","geo_code_c")
+```
+
+```{r}
+#Compute distances: 
+w_centroid_net_OSM <- dodgr_dists(London_OSM_net
+                               ,from = w_centroid_coords
+                               ,to = w_centroid_coords
+                               ,shortest = TRUE
+                               ,quiet = FALSE
+                               ,parallel=TRUE)
+
+
+# To dataframe
+w_centroid_net_OSM_df=setNames(melt(w_centroid_net_OSM), c('rows', 'cols', 'w_cents_osm'))
+w_centroid_net_OSM_df$id  <- 1:nrow(w_centroid_net_OSM_df)
+
+w_centroid_net_OSM_df <- merge(w_centroid_net_OSM_df,geo_code, by.x = "rows",by.y = "idgeo")
+w_centroid_net_OSM_df <- merge(w_centroid_net_OSM_df,geo_code, by.x = "cols",by.y = "idgeo")
+colnames(w_centroid_net_OSM_df)<-c( "cols", "rows", "w_cents_osm","id" ,"geo_code_r","geo_code_c")
+```
+
+```{r}
+w_cent_net=merge(w_centroid_net_OSM_df, w_centroid_net_OS_df, by=c("geo_code_r","geo_code_c"))
+w_cent_net=w_cent_net %>% select("geo_code_r","geo_code_c","w_cents_osm","w_cents_os")
+
+write.csv(w_cent_net,"data/w_cent_net.csv", row.names = FALSE)
+```
+
+```{r}
+w_cents_all=merge(w_cent_net, w_centroid_eu_df, by=c("geo_code_r","geo_code_c"))
+w_cents_all=w_cents_all %>% select("geo_code_r","geo_code_c","w_cents_osm","w_cents_os","w_cents_eu")
+```
+
+
+```{r}
+all_distances=merge(all_distances, w_cents_all, by=c("geo_code_r","geo_code_c"))
+```
+
+```{r}
+write.csv(all_distances,"data/all_distances.csv", row.names = FALSE)
+```
+

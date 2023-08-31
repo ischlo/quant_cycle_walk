@@ -13,9 +13,9 @@ source('scripts/routing/centroids.R')
 # source("scripts/routing/flows.R")
 
 # the benchmark of the different packages for speed. 
-source('benchmarks/routing_benchmarks.R')
+# source('benchmarks/routing_benchmarks.R')
 
 # The routing of various profiles for one type of centroids. and first distance matrices. 
-source('benchmarks/distances_benchmarks.R')
+# source('benchmarks/distances_benchmarks.R')
 
 

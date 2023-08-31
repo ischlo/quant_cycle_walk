@@ -41,7 +41,7 @@ typ_dist_intra_msoa <- typ_dist_intra_msoa |>
   mutate(tip_dist = tip_dist |> units::set_units(NULL))
 
 
-london_msoa$intra_dist <- typ_dist_intra_msoa$tip_dist |> round()
+london_msoa$intra_dist <- typ_dist_intra_msoa$tip_dist/1000 |> round(3)
 
 london_msoa$net_centr <- sf::st_geometry(network_centroid)
 

@@ -70,14 +70,14 @@ def ready_to_export(data):
 # }
 
 
-area_custom_graph = ox.graph_from_bbox(58.620
-                                    ,55.292
-                                    ,-1.736
-                                    ,-6.372
-                                    ,network_type="all"
+area_custom_graph = ox.graph_from_bbox(51.7194
+                                    ,51.2542
+                                    ,0.2925
+                                    ,-0.5452
+                                    ,network_type="bike" # bike
                                     ,simplify = True
                                     ,truncate_by_edge = True
                                     ,clean_periphery = True
                                     )
 
-ox.save_graph_geopackage(area_custom_graph, "custom_graph.gpkg")
+ox.save_graph_geopackage(area_custom_graph, "RC_outputs/bike_graph.gpkg")

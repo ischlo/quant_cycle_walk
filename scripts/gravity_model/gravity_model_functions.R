@@ -1,5 +1,6 @@
-### this file contains the functions used to run the gravity model
+# The good old original R code to run SIM that was used before cppSim
 
+### this file contains the functions used to run the gravity model
 
 cost_function <- function(d, beta, type = "exp") {
 

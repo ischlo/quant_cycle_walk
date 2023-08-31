@@ -13,8 +13,6 @@ make_cppr_lines <- function(paths, graph, crs = 4326) {
 
 #### Very useful function to find the nearest node in the network to any geographic coordinate.
 # Useful for all the routing tasks
-
-
 find_nearest_node_on_graph <- function(graph, points_data = NULL,return_id = TRUE,...) {
   if(is.null(points_data)) stop("Provide sf spatial points to link to the network.")
   if(nrow(points_data)>1000) cat('Points data set is big, expect poor performance...')
@@ -141,5 +139,10 @@ graph_debug_function <- function(graph,node,lines,buffer = 500){
     qtm(graph$coords[node,] |> st_as_sf(crs = 4326,coords = c(2,3))
         ,dots.col = "red")
 }
+
+
+network <- list('find_nearest_node_on_graph'=find_nearest_node_on_graph
+                ,'get_lcc'=get_lcc)
+
 
 

@@ -29,7 +29,6 @@ dodgr_dist_commute <- list.load("../benchmarks/dodgr_dists_commute.rds")
 dodgr_dist_network <- list.load("../benchmarks/dodgr_dists_network.rds")
 
 # grouping into a list
-
 dist_matrices <- list(osm_dist_geom
                       ,osm_dist_commute
                       ,osm_dist_network
@@ -43,7 +42,7 @@ dist_matrices <- list(osm_dist_geom
 
 # flows_matrix
 
-flows <- list.load("../data/flows_london.rds") %>% as.data.table()
+flows <- rlist::list.load("data/flows_london.rds")  |>  data.table::as.data.table()
   
 ## for cycling
 flows_mat <- foreach(i = london_msoa[,id]
@@ -57,7 +56,7 @@ flows_mat <- foreach(i = london_msoa[,id]
   }
 
 ## for walking
-flows_mat_walk <- foreach(i = london_msoa[,id]
+flows_mat_walk <- foreach(i = 1:nrow(london_msoa)
                      ,.combine = rbind
                      ,.final = as.matrix) %do%
   {
@@ -114,7 +113,7 @@ dests <- c("centr_geom"
 
 # run_names,origs,dest,dist_matrices
 
-lapply(dist_matrices, function(x) x %>% as.numeric() %>% summary())
+lapply(dist_matrices, function(x) x |> as.numeric() |> summary())
 
 # Commented out for safety, uncomment to rerun, you will need to load the set of R functions
 # which is not very efficient
@@ -140,24 +139,15 @@ for(k in 1:length(run_names_walk)) {
 #### results ####
 
 ### cycling
-osm_geom_result <- list.load("../test_env/osm_dist_geom/osm_dist_geom_best_fit.rds")
-
-osm_commute_result <- list.load("../test_env/osm_dist_commute/osm_dist_commute_best_fit.rds")
-
-osm_network_result <- list.load("../test_env/osm_dist_network/osm_dist_network_best_fit.rds")
-
-os_geom_result <- list.load("../test_env/os_dist_geom/os_dist_geom_best_fit.rds")
-
-os_commute_result <- list.load("../test_env/os_dist_commute/os_dist_commute_best_fit.rds")
-
-os_network_result <- list.load("../test_env/os_dist_network/os_dist_network_best_fit.rds")
-
-dodgr_geom_result <- list.load("../test_env/dodgr_dist_geom/dodgr_dist_geom_best_fit.rds")
-
-dodgr_commute_result <- list.load("../test_env/dodgr_dist_commute/dodgr_dist_commute_best_fit.rds")
-
-dodgr_network_result <- list.load("../test_env/dodgr_dist_network/dodgr_dist_network_best_fit.rds")
-
+osm_geom_result <- list.load("test_env/osm_dist_geom/osm_dist_geom_best_fit.rds")
+osm_commute_result <- list.load("test_env/osm_dist_commute/osm_dist_commute_best_fit.rds")
+osm_network_result <- list.load("test_env/osm_dist_network/osm_dist_network_best_fit.rds")
+os_geom_result <- list.load("test_env/os_dist_geom/os_dist_geom_best_fit.rds")
+os_commute_result <- list.load("test_env/os_dist_commute/os_dist_commute_best_fit.rds")
+os_network_result <- list.load("test_env/os_dist_network/os_dist_network_best_fit.rds")
+dodgr_geom_result <- list.load("test_env/dodgr_dist_geom/dodgr_dist_geom_best_fit.rds")
+dodgr_commute_result <- list.load("test_env/dodgr_dist_commute/dodgr_dist_commute_best_fit.rds")
+dodgr_network_result <- list.load("test_env/dodgr_dist_network/dodgr_dist_network_best_fit.rds")
 
 results <- list("osm_geom" = osm_geom_result
                 ,"osm_commute" = osm_commute_result
@@ -171,30 +161,30 @@ results <- list("osm_geom" = osm_geom_result
 
 lapply(results, FUN = function(res) res$beta_calib[which.max(res$beta_calib[,2]),c(1,2)])
 
-beta_results <- cbind(beta = results[[1]]$beta_calib[,1]
-                      ,lapply(results, FUN = function(res) res$beta_calib[,2]) %>% as.data.frame()) %>% 
-  as.matrix()
+# beta_results <- cbind(beta = results[[1]]$beta_calib[,1]
+#                       ,lapply(results, FUN = function(res) res$beta_calib[,2]) |> as.data.frame()) |> 
+#   as.matrix()
 
 {
   coul <- 1:8
   p_types <- c(15,17,18)
   l_type <- c(1:4)
   
-  jpeg("quality_fit_cycle.jpg"
-       ,height = 5.83
-       ,width = 5.83
-       ,quality = 80
-       ,units = "in"
-       ,res = 150)
+  # jpeg("quality_fit_cycle.jpg"
+  #      ,height = 5.83
+  #      ,width = 5.83
+  #      ,quality = 80
+  #      ,units = "in"
+  #      ,res = 150)
   
   par(mar = c(4,5,4,1))
   plot(results[[1]]$beta_calib[,c(1,2)]
        ,xlim = c(0,.6)
-       ,ylim = c(.55,.76)
+       ,ylim = c(.55,.1)
        ,cex = 1
        ,type = "n"
-       ,xlab = TeX("\\beta")
-       ,ylab = TeX("$r^2$")
+       ,xlab = expression(beta)
+       ,ylab = expression(r^2)
        ,cex.lab =1.2)
   
   title("Quality of fit, cycling"
@@ -214,49 +204,46 @@ beta_results <- cbind(beta = results[[1]]$beta_calib[,1]
                                                                             ,type = "b"
                                                                             ,lty = l_t
                                                                             ,pch = p_t))
-  dev.off()
+  # dev.off()
   }
 
 
 ### walking
 
-osm_geom_result_walk <- list.load("../test_env/osm_dist_geom_walk/osm_dist_geom_walk_best_fit.rds")
+osm_geom_result_walk <- rlist::list.load("test_env/osm_dist_geom_walk/osm_dist_geom_walk_best_fit.rds")
+osm_commute_result_walk <- rlist::list.load("test_env/osm_dist_commute_walk/osm_dist_commute_walk_best_fit.rds")
+osm_network_result_walk <- rlist::list.load("test_env/osm_dist_network_walk/osm_dist_network_walk_best_fit.rds")
+os_geom_result_walk <- rlist::list.load("test_env/os_dist_geom_walk/os_dist_geom_walk_best_fit.rds")
+os_commute_result_walk <- rlist::list.load("test_env/os_dist_commute_walk/os_dist_commute_walk_best_fit.rds")
+os_network_result_walk <- rlist::list.load("test_env/os_dist_network_walk/os_dist_network_walk_best_fit.rds")
+dodgr_geom_result_walk <- rlist::list.load("test_env/dodgr_dist_geom_walk/dodgr_dist_geom_walk_best_fit.rds")
+dodgr_commute_result_walk <- rlist::list.load("test_env/dodgr_dist_commute_walk/dodgr_dist_commute_walk_best_fit.rds")
+dodgr_network_result_walk <- rlist::list.load("test_env/dodgr_dist_network_walk/dodgr_dist_network_walk_best_fit.rds")
 
-osm_commute_result_walk <- list.load("../test_env/osm_dist_commute_walk/osm_dist_commute_walk_best_fit.rds")
-
-osm_network_result_walk <- list.load("../test_env/osm_dist_network_walk/osm_dist_network_walk_best_fit.rds")
-
-os_geom_result_walk <- list.load("../test_env/os_dist_geom_walk/os_dist_geom_walk_best_fit.rds")
-
-os_commute_result_walk <- list.load("../test_env/os_dist_commute_walk/os_dist_commute_walk_best_fit.rds")
-
-os_network_result_walk <- list.load("../test_env/os_dist_network_walk/os_dist_network_walk_best_fit.rds")
-
-dodgr_geom_result_walk <- list.load("../test_env/dodgr_dist_geom_walk/dodgr_dist_geom_walk_best_fit.rds")
-
-dodgr_commute_result_walk <- list.load("../test_env/dodgr_dist_commute_walk/dodgr_dist_commute_walk_best_fit.rds")
-
-dodgr_network_result_walk <- list.load("../test_env/dodgr_dist_network_walk/dodgr_dist_network_walk_best_fit.rds")
+## alternative, more uptodate way to read in the files, example of os:
+os_walk_sim <- rlist::list.load('test_env/os_walk_sim.rds')
+osm_walk_sim <- rlist::list.load('test_env/osm_walk_sim.rds')
+dodgr_walk_sim <- rlist::list.load('test_env/dodgr_walk_sim.rds')
 
 
 results_walk <- list(
-  # "osm_geom" = osm_geom_result_walk
-  #               ,"osm_commute" = osm_commute_result_walk
-  #               ,"osm_net" = osm_network_result_walk
-  #               ,"os_geom" = os_geom_result_walk
-  #               ,"os_commute" = os_commute_result_walk
-  #               ,"os_net" = os_network_result_walk
-                "dodrg_geom"=dodgr_geom_result_walk
-                ,"dodrg_commute"=dodgr_commute_result_walk
-                ,"dodrg_net"=dodgr_network_result_walk
-                )
+  "osm_geom" = osm_walk_sim$geom
+  ,"osm_commute" = osm_walk_sim$commute
+  ,"osm_net" = osm_walk_sim$net 
+  ,"os_geom" = os_walk_sim$geom 
+  ,"os_commute" = os_walk_sim$commute 
+  ,"os_net" = os_walk_sim$net 
+  ,"dodgr_geom"= dodgr_walk_sim$geom
+  ,"dodgr_commute"= dodgr_walk_sim$commute
+  ,"dodgr_net"= dodgr_walk_sim$net
+)
 
-beta_results_walk <- cbind(beta = results_walk[[1]]$beta_calib[,1]
-                      ,lapply(results_walk, FUN = function(res) res$beta_calib[,2]) %>% as.data.frame()) %>% 
-  as.matrix()
+# beta_results_walk <- cbind(beta = results_walk[[1]]$beta_calib[,1]
+#                       ,lapply(results_walk, FUN = function(res) res$beta_calib[,2]) |> as.data.frame()) |> 
+#   as.matrix()
 
 {
-  coul <- 1:6
+  coul <- 1:8
   p_types <- c(15,17,18)
   l_type <- c(1:4)
   
@@ -268,9 +255,9 @@ beta_results_walk <- cbind(beta = results_walk[[1]]$beta_calib[,1]
   #      ,res = 150)
   
   par(mar = c(4,5,4,1))
-  plot(results_walk[[1]]$beta_calib[,c(1,2)]
-       # ,xlim = c(.7,1.6)
-       # ,ylim = c(.8,1)
+  plot(results_walk[[1]]$beta_calib[,1]
+       ,xlim = c(.7,1.6)
+       ,ylim = c(.8,.95)
        ,cex = 1
        ,type = "n"
        ,xlab = expression(beta)
@@ -298,19 +285,14 @@ beta_results_walk <- cbind(beta = results_walk[[1]]$beta_calib[,1]
   }
 
 
-# active travel summed up:
+## active travel summed up:
 
-osm_geom_result_at <- list.load("../test_env/osm_dist_geom_at/osm_dist_geom_at_best_fit.rds")
-
-osm_commute_result_at <- list.load("../test_env/osm_dist_commute_at/osm_dist_commute_at_best_fit.rds")
-
-osm_network_result_at <- list.load("../test_env/osm_dist_network_at/osm_dist_network_at_best_fit.rds")
-
-os_geom_result_at <- list.load("../test_env/os_dist_geom_at/os_dist_geom_at_best_fit.rds")
-
-os_commute_result_at <- list.load("../test_env/os_dist_commute_at/os_dist_commute_at_best_fit.rds")
-
-os_network_result_at <- list.load("../test_env/os_dist_network_at/os_dist_network_at_best_fit.rds")
+osm_geom_result_at <- list.load("test_env/osm_dist_geom_at/osm_dist_geom_at_best_fit.rds")
+osm_commute_result_at <- list.load("test_env/osm_dist_commute_at/osm_dist_commute_at_best_fit.rds")
+osm_network_result_at <- list.load("test_env/osm_dist_network_at/osm_dist_network_at_best_fit.rds")
+os_geom_result_at <- list.load("test_env/os_dist_geom_at/os_dist_geom_at_best_fit.rds")
+os_commute_result_at <- list.load("test_env/os_dist_commute_at/os_dist_commute_at_best_fit.rds")
+os_network_result_at <- list.load("test_env/os_dist_network_at/os_dist_network_at_best_fit.rds")
 
 results_at <- list("osm_geom" = osm_geom_result_at
                      ,"osm_commute" = osm_commute_result_at
@@ -321,7 +303,7 @@ results_at <- list("osm_geom" = osm_geom_result_at
 )
 
 beta_results_at <- cbind(beta = results_at[[1]]$beta_calib[,1]
-                           ,lapply(results_at, FUN = function(res) res$beta_calib[,2]) %>% as.data.frame()) %>% 
+                           ,lapply(results_at, FUN = function(res) res$beta_calib[,2]) |> as.data.frame()) |> 
   as.matrix()
 
 
