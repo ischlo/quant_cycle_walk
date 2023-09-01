@@ -2,11 +2,18 @@
 
 setup_area <- function(path = ''){
   
-  # preprocess the London msoas
-  source('scripts/network/msoa.R')
   
-  # add the centroids and finish preprocessing
-  source('scripts/network/msoa_centroids.R')
+  if(!file.exists('data/london_msoa.rds')){
+    # preprocess the London msoas
+    source('scripts/network/msoa.R')
+    
+    # add the centroids and finish preprocessing
+    source('scripts/network/msoa_centroids.R') 
+    
+  } else cat('london_msoa file exists, erase before recreating.\n')
+  
+  # cleaning the flows data set to keep only london
+  source('scripts/network/flows.R')
 }
 
 setup_area()

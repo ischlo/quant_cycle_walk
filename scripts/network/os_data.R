@@ -42,6 +42,6 @@ if(file.exists("benchmarks/cppr_networks/os_graph.rds")) {
   os_cppr_simple <- make_cppr_net(edges = os_london
                                   ,nodes = os_nodes)
   
-  rlist::list.save(os_cppr_simple,"benchmarks/cppr_networks/os_graph.rds")
+  rlist::list.save(os_cppr_simple,"benchmarks/cppr_networks/os_all.rds")
   
 }

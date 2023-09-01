@@ -1,3 +1,5 @@
+
+# OUTDATED !!! adapt to the latest scripts and add to the sim workflows script.
 # simulation of the model without networks
 # the basic case of runnung a SIM with simple crow fly distances is also considered and shown in the results. 
 
@@ -61,9 +63,9 @@ for(k in 1:length(runs_norm)) { # check length of run names
 
 
 #### analysis of results, see simulation_selected.R ####
-
-norm2_geom_results <- list.load("/Users/ivann/Desktop/CASA/test_env/norm2_geom/norm2_geom_best_fit.rds")
-
-norm2_commute_results <- list.load("/Users/ivann/Desktop/CASA/test_env/norm2_commute/norm2_commute_best_fit.rds")
-
-norm2_network_results <- list.load("/Users/ivann/Desktop/CASA/test_env/norm2_network/norm2_network_best_fit.rds")
+# 
+# norm2_geom_results <- list.load("test_env/norm2_geom/norm2_geom_best_fit.rds")
+# 
+# norm2_commute_results <- list.load("test_env/norm2_commute/norm2_commute_best_fit.rds")
+# 
+# norm2_network_results <- list.load("test_env/norm2_network/norm2_network_best_fit.rds")

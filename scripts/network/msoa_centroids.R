@@ -13,6 +13,8 @@ options(max.print = 50)
 
 ##### 
 
+if(file.exists('data/london_msoa.rds')) {
+
 london_msoa <- rlist::list.load('data/london_msoa.rds')
 
 #### reading in the different files for the centroids
@@ -73,7 +75,11 @@ london_msoa[,c("geometry","centr_geom","pop_weight_geom","workplace_centr","net_
   london_msoa[,c("geometry","centr_geom","pop_weight_geom","workplace_centr","net_centr")] |> 
   sapply(sf::st_as_text) |> as.data.frame()
 
+london_msoa[,id:=1:nrow(.SD)]
+
 london_msoa |> list.save("data/london_msoa.rds")
 
 london_msoa |> readr::write_csv('data/london_msoa.csv')
+
+} else cat('run msoa.R to create the london_msoa.rds file before running this one')
 

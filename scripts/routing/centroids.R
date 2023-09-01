@@ -3,7 +3,7 @@ library(rlist)
 library(sf)
 
 #### find centroids here.
-
+source('scripts/network/cppr_network_setup.R')
 # DATA
 if(file.exists('benchmarks/centroids.rds')){
   cat('centroids already exist\n'
@@ -19,7 +19,7 @@ if(file.exists('benchmarks/centroids.rds')){
                 ,'osm_walk'=list(rlist::list.load('benchmarks/cppr_networks/osm_walk.rds'))
                 ,'dodgr_walk'=list(rlist::list.load('benchmarks/cppr_networks/dodgr_walk.rds'))
                 ,'dodgr_cycle'=list(rlist::list.load('benchmarks/cppr_networks/dodgr_cycle.rds'))
-                ,'os'=list(rlist::list.load('benchmarks/cppr_networks/os_graph.rds'))
+                ,'os_all'=list(rlist::list.load('benchmarks/cppr_networks/os_all.rds'))
   )
   
   centroids <- list('geom'='centr_geom'

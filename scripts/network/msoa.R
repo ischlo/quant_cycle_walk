@@ -2,44 +2,9 @@ require(pct)
 require(sf)
 require(data.table)
 require(rlist)
-#### MSOAs summary stats for england ####
-# gb_bound_file <-  file.path(data_folder
-#                             ,"bdline_gml3_gb"
-#                             ,"INSPIRE_AdministrativeUnit.gml")
-# 
-# 
-# # the gpkg file is huuuuuge. before loading, inspect layers 
-# st_layers(file.path(data_folder,"bdline_gb.gpkg"))
-# 
-# os_bound <- sf::st_read(file.path(data_folder,"bdline_gb.gpkg"))
 
-# postcode_la <- fread(file.path(data_folder,"postcodetola.csv"))
-# 
-# postcode_la |> head()
-# 
-# postcode_la <- NULL
 
-# gb_sectors <- sf::st_read(file.path(data_folder,"Distribution","Sectors.shp"))
-# 
-# gb_sectors$name
-
-# regions <- pct_regions_lookup |>
-#   filter(region_name == "london") |>
-#   pull(lad16nm)
-# 
-# england_zones <- get_pct(purpose = "commute"
-#                          ,geography = "msoa"
-#                          ,layer = "z"
-#                          ,national = TRUE
-# )
-# 
-# england_zones <- england_zones |> st_make_valid()
-# 
-# england_zones <-england_zones |> as.data.table()
-# 
-# england_zones |> colnames()
-# 
-# england_centroids <- england_zones[,.(geo_code,geo_name,geom = st_centroid(geometry))]
+if(!file.exists('data/london_msoa.rds')){
 
 # get msoa bounndaries data from pct
 
@@ -57,6 +22,8 @@ london_zones <- london_zones |> data.table()
 london_zones <- london_zones[,.(geo_code,geo_name,geometry = sf::st_geometry(geometry))]
 
 london_zones |> rlist::list.save('data/london_msoa.rds')
+
+} else cat('london_msoa file exists, erase before recreating.')
 
 # london_zones[,"area"] <- london_zones[, lapply(.SD, st_area), .SDcols = c("geometry")]
 # 

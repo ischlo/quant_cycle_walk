@@ -25,7 +25,7 @@
       "RemoteRepo": "Btoolkit",
       "RemoteUsername": "ischlo",
       "RemoteRef": "HEAD",
-      "RemoteSha": "2586566531b552c795f5ff293f884d94f315c87e",
+      "RemoteSha": "a5d3b06eaf428bec7e0c3d04513f5a22a6e5a077",
       "Requirements": [
         "R",
         "Rcpp",
@@ -37,7 +37,7 @@
         "rstudioapi",
         "sf"
       ],
-      "Hash": "125dfa48dd96fdf64dddfa780e7ac9d5"
+      "Hash": "227c31d2736f40098807ae4ef234caa7"
     },
     "DBI": {
       "Package": "DBI",
@@ -227,6 +227,17 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "1c0aa18b97e6aaa17f93b8b866c0ace5"
+    },
+    "RcppTOML": {
+      "Package": "RcppTOML",
+      "Version": "0.2.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "Rcpp"
+      ],
+      "Hash": "c232938949fcd8126034419cc529333a"
     },
     "RcppThread": {
       "Package": "RcppThread",
@@ -2439,6 +2450,28 @@
         "stringr"
       ],
       "Hash": "bb5996d0bd962d214a11140d77589917"
+    },
+    "reticulate": {
+      "Package": "reticulate",
+      "Version": "1.31",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "Matrix",
+        "R",
+        "Rcpp",
+        "RcppTOML",
+        "graphics",
+        "here",
+        "jsonlite",
+        "methods",
+        "png",
+        "rappdirs",
+        "rlang",
+        "utils",
+        "withr"
+      ],
+      "Hash": "5e2f71b7ccd5c060ad439a4824b4288c"
     },
     "rlang": {
       "Package": "rlang",
