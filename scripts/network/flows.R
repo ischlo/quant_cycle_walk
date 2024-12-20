@@ -1,6 +1,6 @@
 
 #  pre pricessing the flows data and creating the flows_london file with only flows in london for active travel.
- 
+
 library(data.table)
 library(rlist)
 library(sf)
@@ -156,6 +156,8 @@ if(!file.exists("data/flows_london.rds")) {
             ,old = c("id.x","id.y")
             ,new = c("from_id","to_id")
    )
+   
+   rlist::list.save('data/flows_london.rds')
    
 } else cat('flows_london already exists, erase first to recreate.')
 

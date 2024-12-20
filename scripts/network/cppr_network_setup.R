@@ -140,9 +140,9 @@ graph_debug_function <- function(graph,node,lines,buffer = 500){
         ,dots.col = "red")
 }
 
-
-network <- list('find_nearest_node_on_graph'=find_nearest_node_on_graph
-                ,'get_lcc'=get_lcc)
+# 
+# network <- list('find_nearest_node_on_graph'=find_nearest_node_on_graph
+#                 ,'get_lcc'=get_lcc)
 
 
 

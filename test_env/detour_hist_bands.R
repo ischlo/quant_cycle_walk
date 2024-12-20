@@ -7,12 +7,14 @@ library(Btoolkit)
 library(cppSim)
 library(foreach)
 library(weights)
-
+library(forcats)
+library(ggplot2)
+library(ggridges)
 
 ##
 
 # source the script that produces the detour_dt data set
-source('')
+source('../test_env/detour_index_at.R')
 
 ##
 
@@ -52,12 +54,13 @@ detour_bin_plot_2 <- function(left, right,col = 'darkred',...) {
 col <- c('pink','darkgreen','orange','darkblue')  
 l_wd <- 1.5
 values <- c(3000,6000,9000,12000,15000)
+
 par(cex.lab=1.3
     ,mar = c(5,5,4,1))
 
 # PLOTTING THE DETOURS FOR DIFFERENT DISTANCE INTERVALS, WEIGHTED AND NON WEIGHTED. 
 { 
-  # alphas <- c(.1,.3,.5,.7,.9)
+  alphas <- c(.1,.3,.5,.7,.9)
   res_osm <- data.frame('detour_c'= double(),'detour_n'=double(),'t-test'=double())
   
   plot(x = 1
@@ -79,34 +82,42 @@ par(cex.lab=1.3
   cat('T-test: ',t_val,'\n')
   res_osm <- rbind(res_osm,c(detour_bin_val(0,values[1]),detour_bin_val_2(0,values[1]),t_val))
   # par(new =)
-  for (j in 1:(length(values)-1)) {
-    detour_bin_plot(values[j],values[j+1], col = col[j],lwd=l_wd,alpha = alphas[j])
+  
+  detour_dt[,"band"] <- "15<"
+  
+  detour_dt[crow_fly > 0 & crow_fly <= values[1],"band"] <- bands[1]
+  
+  for (j in 1:(length(values) - 1)) {
     
-    detour_c <- detour_bin_val(values[j],values[j+1])
+    detour_dt[crow_fly > values[j] & crow_fly <= values[j + 1],"band"] <- bands[j + 1]
+    
+    detour_bin_plot(values[j],values[j + 1], col = col[j],lwd = l_wd,alpha = alphas[j])
+    
+    detour_c <- detour_bin_val(values[j],values[j + 1])
     cat('Flow weighted av. detour',detour_c,'\n')
     #
-    detour_bin_plot_2(values[j],values[j+1], col = col[j],lwd=l_wd,alpha = alphas[j])
+    detour_bin_plot_2(values[j],values[j + 1], col = col[j],lwd = l_wd,alpha = alphas[j])
   
-    detour_n <- detour_bin_val_2(values[j],values[j+1])
+    detour_n <- detour_bin_val_2(values[j],values[j + 1])
     cat('Av. detour',detour_n,'\n')
     
     dat = detour_dt[crow_fly <= values[j+1] & crow_fly > values[j],]
-    cat(nrow(dat[flow!=0,]),' observations in that interval.\n')
+    cat(nrow(dat[flow != 0,]),' observations in that interval.\n')
     t_val <- wtd.t.test(x = dat$detour,weight = (dat$flow/sum(dat$flow))
                         ,y = dat$detour, weighty = rep_len(1,nrow(dat)))$coefficients[1]
     cat('T-test: ',t_val,'\n')
     res_osm <- rbind(res_osm,c(detour_c,detour_n,t_val))
   }
   
-  legend(x=1.5
-         ,y=10.5
+  legend(x = 1.5
+         ,y = 10.5
          # ,cex = 1.2
          ,legend = c('weighted','non-weighted')
          ,lty = c(1,2)
          ,lwd = l_wd
          ,col = 'grey')
-  legend(x=1.5
-         ,y=8
+  legend(x = 1.5
+         ,y = 8
          # ,cex = 1.2
          ,col = c('darkred',col)
          ,lwd = l_wd
@@ -115,7 +126,7 @@ par(cex.lab=1.3
          ,title = 'Distance (km)')
   
   res_osm <- `colnames<-`(res_osm,c('detour_c','detour_n','t-test'))
-  # res_osm
+  
 }
 
 lapply(res_osm,print)
@@ -152,6 +163,9 @@ detour_os_bin_plot_2 <- function(left, right,col = 'darkred',...) {
 }
 
 
+bands <- c("0-3","3-6","6-9","9-12","12-15")
+
+
 { 
   # col <- c('pink','darkgreen','orange','darkblue')  
   # values <- c(3000,6000,9000,12000,15000)
@@ -160,14 +174,14 @@ detour_os_bin_plot_2 <- function(left, right,col = 'darkred',...) {
   res_os <- data.frame('detour_c'= double(),'detour_n'=double(),'t-test'=double())
   
   plot(x = 1
-       ,xlim=c(1,2)
+       ,xlim = c(1,2)
        ,xlab = expression(delta)
-       ,ylim=c(0,11)
+       ,ylim = c(0,11)
        ,ylab = expression(P(delta))
        ,type = "n"
-       ,main='Detour by distance interval, OS network')
+       ,main = 'Detour by distance interval, OS network')
   detour_os_bin_plot(0,values[1],lwd = l_wd,col = 'darkred')
-  cat('Flow weighted av. detour',detour_os_bin_val(0,values[1]),'\n')
+  cat('Flow weighted av. detour',detour_os_bin_val(0, values[1]),'\n')
   #
   detour_os_bin_plot_2(0,values[1], lwd = l_wd)
   cat('Av. detour',detour_os_bin_val_2(0,values[1]),'\n')
@@ -175,31 +189,39 @@ detour_os_bin_plot_2 <- function(left, right,col = 'darkred',...) {
   cat(nrow(dat),' observations in that interval.\n')
   t_val <- wtd.t.test(x = dat$detour,weight = (dat$flow/sum(dat$flow))
                       ,y = dat$detour, weighty = rep_len(1,nrow(dat)))$coefficients[1]
+  
   cat('T-test: ',t_val,'\n')
-  # par(new =)
+
   res_os <- rbind(res_os,c(detour_os_bin_val(0,values[1]),detour_os_bin_val_2(0,values[1]),t_val))
   
-  for (j in 1:(length(values)-1)) {
-    detour_os_bin_plot(values[j],values[j+1], col = col[j],lwd=l_wd)
+  detour_dt_os[,"band"] <- "15<"
+  
+  detour_dt_os[crow_fly > 0 & crow_fly <= values[1],"band"] <- bands[1]
+  
+  for (j in 1:(length(values) - 1)) {
+    
+    detour_dt_os[crow_fly > values[j] & crow_fly <= values[j + 1],"band"] <- bands[j + 1]
+    
+    detour_os_bin_plot(values[j],values[j + 1], col = col[j],lwd = l_wd)
     #
-    cat('Flow weighted av. detour',detour_os_bin_val(values[j],values[j+1]),'\n')
-    detour_c <- detour_os_bin_val(values[j],values[j+1])
+    cat('Flow weighted av. detour',detour_os_bin_val(values[j],values[j + 1]),'\n')
+    detour_c <- detour_os_bin_val(values[j],values[j + 1])
     #
-    detour_os_bin_plot_2(values[j],values[j+1], col = col[j],lwd=l_wd)
+    detour_os_bin_plot_2(values[j],values[j + 1], col = col[j],lwd = l_wd)
     #
-    cat('Av. detour',detour_os_bin_val_2(values[j],values[j+1]),'\n')
-    detour_n <- detour_os_bin_val_2(values[j],values[j+1])
+    cat('Av. detour',detour_os_bin_val_2(values[j],values[j + 1]),'\n')
+    detour_n <- detour_os_bin_val_2(values[j],values[j + 1])
     #
-    dat = detour_dt_os[crow_fly <= values[j+1] & crow_fly > values[j],]
-    cat(nrow(dat[flow!=0,]),' observations in that interval.\n')
+    dat = detour_dt_os[crow_fly <= values[j + 1] & crow_fly > values[j],]
+    cat(nrow(dat[flow != 0,]),' observations in that interval.\n')
     t_val <- wtd.t.test(x = dat$detour,weight = (dat$flow/sum(dat$flow))
                         ,y = dat$detour, weighty = rep_len(1,nrow(dat)))$coefficients[1]
     cat('T-test: ',t_val,'\n')
     res_os <- rbind(res_os,c(detour_c,detour_n,t_val))
   }
   
-  legend(x=1.5
-         ,y=10.5
+  legend(x = 1.5
+         ,y = 10.5
          # ,cex = 1.3
          ,legend = c('weighted','non-weighted')
          ,lty = c(1,2)
@@ -211,7 +233,7 @@ detour_os_bin_plot_2 <- function(left, right,col = 'darkred',...) {
          ,col = c('darkred',col)
          ,lwd = l_wd
          ,lty = c(1)
-         ,legend = c('0-3','3-6','6-9','9-12','12-15')
+         ,legend = bands #c('0-3','3-6','6-9','9-12','12-15')
          ,title = 'Distance (km)')
   
   res_os <- `colnames<-`(res_os,c('detour_c','detour_n','t-test'))
@@ -244,6 +266,133 @@ res_os
 # }
 # \end{table}
 
+#####
+##### RIDGELINES 
 
+detour_dt_os
 
+#### Theme for both plots
+# my_theme <- \(obj) {
+#   obj + scale_y_discrete(labels = detour_labels) +
+#   theme(
+#     plot.title = element_text(hjust = 0, size = 22),
+#     axis.ticks.y = element_blank(),
+#     axis.text = element_text(size = 20),
+#     axis.title = element_text(size = 22,face = "bold"),
+#     panel.grid.major.x = element_blank(),
+#     panel.grid.minor.x = element_blank(),
+#     panel.grid.major.y = element_line(linewidth = 0.5),
+#     panel.border = element_blank(),
+#   )
+# }
+
+(detour_dt_os[band != "15<" & detour > 1 & detour < 2.5,nrow(.SD),by = "band"])
+detour_dt_os[band != "15<" & detour > 1,sum(flow),by = "band"]
+
+detour_labels <- c("0-3 km",
+                   "3-6 km",
+                   "6-9 km",
+                   "9-12 km",
+                   "12-15 km")
+
+plot1 <- ggplot(detour_dt_os[band != "15<" & detour > 1,]
+                ,aes(detour
+                      ,y = fct_reorder(band, detour,.desc = TRUE)
+                      ,group = band
+                     ,scale = 1.2
+                )) +
+  xlim(1, 2) +
+  labs(title = "Detour by bands, OS"
+       ,y = ""#expression(P(delta))
+       ,x = expression(delta)
+       ,cex=1.5)  +
+  ggridges::geom_density_ridges(
+    aes(
+      ,detour
+      ,y = fct_reorder(band, detour,.desc = TRUE)
+      ,group = band
+      ,weight = flow
+    )
+    , alpha = 0.3
+    , scale = 1
+    , fill = "darkblue"
+  ) +
+  ggridges::stat_density_ridges(
+    aes(
+      detour
+      ,y = fct_reorder(band, detour,.desc = TRUE)
+      ,group = band
+    )
+    , alpha = 0.3
+    , linetype = "dashed"
+    , scale = 1
+  ) +
+  scale_y_discrete(labels = detour_labels) +
+  theme(
+    plot.title = element_text(hjust = 0, size = 22),
+    axis.ticks.y = element_blank(),
+    axis.text = element_text(size = 20),
+    axis.title = element_text(size = 22,face = "bold"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.y = element_line(linewidth = 0.5),
+    panel.border = element_blank(),
+  )
+
+plot1
+
+ggsave(plot = plot1,filename = "OS_detour_hist_bands_ridge.png",dpi = 400)
+
+#### OSM
+
+(detour_dt[band != "15<" & detour > 1 & detour < 2.5,nrow(.SD),by = "band"])
+detour_dt[band != "15<" & detour > 1, list(flows = sum(flow)), by = "band"]
+
+plot1_osm <- ggplot(detour_dt[band != "15<" & detour > 1,]
+                ,aes(detour
+                     ,y = fct_reorder(band, detour,.desc = TRUE)
+                     ,group = band
+                     ,scale = 1.2
+                )) +
+  xlim(1, 2) +
+  labs(title = "Detour by bands, OSM"
+       ,y = ""#expression(P(delta))
+       ,x = expression(delta)
+       ,cex = 1.5)  +
+  ggridges::geom_density_ridges(
+    aes(
+      ,detour
+      ,y = fct_reorder(band, detour,.desc = TRUE)
+      ,group = band
+      ,weight = flow
+    )
+    , alpha = 0.3
+    , scale = 1
+    , fill = "darkblue"
+  ) +
+  ggridges::stat_density_ridges(
+    aes(
+      detour
+      ,y = fct_reorder(band, detour,.desc = TRUE)
+      ,group = band
+    )
+    , alpha = 0.3
+    , linetype = "dashed"
+    , scale = 1
+  ) +
+  scale_y_discrete(labels = detour_labels) +
+  theme(
+    plot.title = element_text(hjust = 0, size = 22),
+    axis.ticks.y = element_blank(),
+    axis.text = element_text(size = 20),
+    axis.title = element_text(size = 22,face = "bold"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.y = element_line(linewidth = 0.5),
+    panel.border = element_blank(),
+  )
+
+plot1_osm
+
+ggsave(plot = plot1_osm,filename = "OSM_detour_hist_bands_ridge.png",dpi=400)
 

@@ -38,23 +38,24 @@ if(!file.exists('test_env/sim.rds')){
   
       res <- list('at'=res_1
                   ,'cycle'=res_2
-                  ,'walk'=res_3)
+                  ,'walk'=res_3
+                  )
       
     } else if (n[2]=='cycle'){
-      
+
       res <- run_network_sim(dist_mat = dist
                              ,flows_mat = flows_mat[['cycle']]
                              ,beta_init = 0
                              ,step = .03)
-      
+
     } else if (n[2]=='walk'){
-      
+
       res <- run_network_sim(dist_mat = dist
                              ,flows_mat = flows_mat[['walk']]
                              ,beta_init = .5
                              ,step = .03
                              ,n_iter = 40)
-      
+
     }
     
     return(res)

@@ -34,6 +34,8 @@ flows_mat_at <- foreach(i = london_msoa[,id]
 
 flows_mat_at <- `mode<-`(flows_mat_at,"integer")
 
+flows_mat_at |> dim()
+
 # Calculating the crow fly distances -----
 
 norm2_geom <- london_msoa[,"centr_geom"] %>% 
@@ -89,41 +91,91 @@ dist_matrices_at <- list("osm_dist_geom"=osm_dist_geom
 
 # detour active travel ----
 
+lapply(dist_matrices_at,FUN = function(m) diag(m) |> summary())
+
 detour_index_at <- mapply(dist_matrices_at
-                       ,norm2
-                       ,SIMPLIFY = FALSE
-                       ,FUN = function(d,n) {
-                         n <- `diag<-`(n,diag(d))
-                         as.numeric(d/n)
-                       })
+                          ,norm2
+                          ,SIMPLIFY = FALSE
+                          ,FUN = function(d,n) {
+                            n <- `diag<-`(n,1)
+                            d <- `diag<-`(d,NA)
+                            as.numeric(d/n)
+                          })
 
 lapply(detour_index_at,FUN = function(m) summary(as.numeric(m)))
 
 lapply(detour_index_at, FUN = function(m) m[which(m != 1)] |> summary())
 
+flows_mat_at
+
 ### detour vs distance plot
+library(ggplot2)
+
+which_dist <- 6
+
+plot.df <- ggplot(data = data.frame('y' = detour_index_at[[which_dist]]
+                                    ,'x' = as.numeric(flows_mat_at))
+                                    ,aes(x = x, y = y)
+                  ) +
+  geom_hex(na.rm = TRUE,bins=100,aes(fill = after_stat(log1p(count)))) +
+  scale_y_continuous(limits = c(1, 3))+
+  scale_x_continuous(limits = c(1,300))
+
+print(plot.df)
+
+# 
+# fig <- plotly::plot_ly(x=as.numeric(norm2[[1]])
+#                        ,y=detour_index_at[[1]]) |> 
+#   add_histogram2d(histfunc='count'
+#                   ,colorbar=list(tick0=1
+#                                  ,dtick=2
+#                                  ,tickmode = 'array'
+#                                  ,tickvals = c(1,100,1000,3000,5000,9000)))
+# 
+# fig
 
 # have a function that takes a detour matrix, and bands, 
 # and returns the mean and sd values for the circuity in the provided intervals.
-bin <-  function(detour,dist, x, y) {
-  
-  m = mean(detour[dist>x & dist <=y])
-  sd = sd(detour[dist>x & dist <=y])
-  n = length(detour[dist>x & dist <=y])
-  return(c(m,sd,(x+y)/2,n))
+bin <- function(detour,dist, x, y, w=NULL) {
+  if(is.null(w)){
+    m <- mean(detour[dist>x & dist <= y],na.rm = TRUE)
+    sd <- sd(detour[dist>x & dist <= y],na.rm = TRUE)
+    n <- length(detour[dist>x & dist <= y])
+    return(c(m,sd,(x+y)/2,n))
+  } else {
+    m <-  weighted.mean(detour[dist>x & dist <=y],w=w[dist>x & dist <=y],na.rm=TRUE)
+    sd <- sqrt(weighted.mean((detour[dist > x & dist <=y]-m)^2, w=w[dist>x & dist <=y],na.rm=TRUE))
+    # sd = sd(detour[dist>x & dist <=y])
+    n <- length(detour[dist>x & dist <=y])
+    return(c(m,sd,(x+y)/2,n))
+  }
 }  
 
-bins <-  10
+bins <-  11
 d_max <- 50000
 intervals <- 0:bins*(d_max/bins)
+# 
 res <- NULL
+res_w <- NULL
+
+dist_ <- norm2$commute #dist_matrices_at$osm_dist_commute
+
+detour_ <- detour_index_at$osm_dist_commute
+
+####
 
 for (i in 1:bins) {
-  res <- rbind(res,bin(detour_index_at$osm_dist_commute,norm2$commute,intervals[i],intervals[i+1]))
+  res <- rbind(res
+               ,bin(detour=detour_,dist=dist_,x=intervals[i],y=intervals[i+1],w=NULL))
+  res_w <- rbind(res_w
+                 ,bin(detour=detour_,dist=dist_,x=intervals[i],y=intervals[i+1],w = flows_mat_at))
 }
 
+# small shift for better visual
+eps <- 0.15
 # res=res[-1,]
 res[,3] <- res[,3]/1000
+res_w[,3] <- res_w[,3]/1000+eps
 # 
 
 {
@@ -139,26 +191,98 @@ res[,3] <- res[,3]/1000
        ,ylab = expression('Mean detour,'~delta)
        ,type = 'b'
        ,pch = 19
-       ,ylim = c(1,1.45)
-       ,xlim = c(0,51)
-       ,main = 'Mean detour by distance band'
+       ,ylim = c(1,1.6)
+       ,xlim = c(0,d_max/1000+1)
+       ,main = 'Mean detour by crow-fly distance'
        ,lwd = 2
   )
+  
+  
+  
+  res_w[,3] <- res[,3]+eps
+  
+  points(x=res_w[,3]
+         ,y=res_w[,1]
+         ,col='darkred'
+         ,pch=19)
   
   segments(res[,3],res[,1]-res[,2]
            ,res[,3],res[,1]+res[,2]
            ,lwd = 1.5)
   
+  segments(res_w[,3],res_w[,1]-res_w[,2]
+           ,res_w[,3],res_w[,1]+res_w[,2]
+           ,lwd = 1.5
+           ,col = 'darkred')
+  
+  
   # little bars at the ends
-  eps <- 0.5
+  
   segments(res[,3]-eps,res[,1]-res[,2]
            ,res[,3]+eps,res[,1]-res[,2]
            ,lwd = 1)
   segments(res[,3]-eps,res[,1]+res[,2]
            ,res[,3]+eps,res[,1]+res[,2]
            ,lwd = 1)
+  
+  
+  segments(res_w[,3]-eps,res_w[,1]-res_w[,2]
+           ,res_w[,3]+eps,res_w[,1]-res_w[,2]
+           ,lwd = 1
+           ,col = 'darkred')
+  segments(res_w[,3]-eps,res_w[,1]+res_w[,2]
+           ,res_w[,3]+eps,res_w[,1]+res_w[,2]
+           ,lwd = 1
+           ,col = 'darkred')
+  legend(x=15,y=1.5
+         ,col = c('black','darkred')
+         ,legend=c('non-weighted','weighted')
+         ,pch=20)
   # dev.off()
 }
+
+#### Other plots using gg
+
+smooth_data <- data.frame(x=c(dist_)
+                          ,y=c(detour_))
+
+# linear trend + confidence interval
+p3 <- ggplot(smooth_data, aes(x=x, y=y)) +
+  # geom_point() +
+  geom_smooth(method="gam", color="red", fill="#69b3a2", se=TRUE) +
+  hrbrthemes::theme_ipsum()
+
+p3
+
+####
+
+smooth_res <- as.data.frame(res)
+
+# Make the plot
+p4_ribbon <- ggplot(data=smooth_res, aes(x=V3, y=V1, ymin=V1-V2, ymax=V1+V2)) + 
+  geom_line() + 
+  geom_ribbon(alpha=0.3) + 
+  xlim(0,50) +
+  ylim(1,1.5) +
+  labs(title = "Detour trend"
+       ,x="Distance (Km)"
+       ,y=expression(delta)) +
+  theme(
+    plot.title = element_text(hjust = 0, size = 22),
+    axis.ticks = element_line(linewidth = .8,linetype = 1),
+    axis.text = element_text(size = 20),
+    axis.title = element_text(size = 22, face = "bold"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    # panel.border = element_rect(linewidth = 1,fill = NULL,),#element_blank(),
+    legend.position = "none"
+  )
+
+p4_ribbon
+
+ggsave(plot = p4_ribbon,filename = "mean_detour_dist.png",dpi = 400)
 
 # results ----
 # 
@@ -246,8 +370,8 @@ fig <- plot_ly(detours_binned
                ,x = ~crow_fly_bin
                , y = ~net
                ,z = ~log1p(flow), type = "heatmap") |> 
-  add_lines(x=c(0,50000)
-            ,y=c(0,50000)
+  add_lines(x = c(0,50000)
+            ,y = c(0,50000)
             ,line = list(color = "red",size = 5),inherit = FALSE) |> 
   layout(xaxis = list(type = "log")
          ,yaxis = list(type = "log")
@@ -269,60 +393,61 @@ fig
 
 ######
 # Detour vs quality of fit ----
-detour_qfit_at <- mapply(sim_at
-                         ,detour_index_at
-                         # ,SIMPLIFY = FALSE
-                         ,FUN = function(res,m) {c("r_2" = cor(res[[1]] |> as.numeric()
-                                                               ,flows_mat_at |> as.numeric())^2
-                                                   ,"detour" = mean(m[which(m != 1)]))}) |> as.matrix() |> t()
-
-detour_qfit_at
-
-# Plots ----
-# plots
-pchs <- c(1,15,24)
-cols <- c("darkred","darkred","darkred","navyblue","navyblue","navyblue")
-
-# tutorial on how to annotate a la latex in R plots
-# https://data.library.virginia.edu/mathematical-annotation-in-r/
-{
-  par(mar = c(5,5,4,1))
-  plot(detour_qfit_at
-       ,main = "Detour, quality of fit"
-       ,pch = pchs
-       ,col = cols
-       ,xlab = expression(r^2)
-       ,ylab = expression(delta)
-       ,cex.lab = 1.4
-       ,ylim = c(1.155,1.3)
-       ,cex.axis = 1.2
-       ,cex = 1.4
-  )
-  legend(x = .859
-         ,y = 1.285
-         ,title = "Centroid"
-         ,pch = pchs
-         ,legend = c("geom","commute","network")
-         ,bty = "n"
-  )
-  legend(x = .859
-         ,y = 1.24
-         ,title = "Network"
-         ,legend = c("OSM","OS")
-         ,fill = unique(cols)
-         ,col = unique(cols)
-         ,bty = "n"
-  )
-  # legend(y = 1.21
-  #        ,x = 0.859
-  #        ,legend = "mean detour"
-  #        ,lty = 2
-  #        ,lwd = 2
-  #        ,bty = "n"
-  #        )
-  
-  abline(h =  c(1.1896,1.2918)
-         ,col = c("darkred","navyblue")
-        ,lty = 2
-        ,lwd = 2)
-}
+# detour_qfit_at <- mapply(sim_at
+#                          ,detour_index_at
+#                          # ,SIMPLIFY = FALSE
+#                          ,FUN = function(res,m) {c("r_2" = cor(res[[1]] |> as.numeric()
+#                                                                ,flows_mat_at |> as.numeric())^2
+#                                                    ,"detour" = mean(m[which(m != 1)]))}) |> as.matrix() |> t()
+# 
+# detour_qfit_at
+# 
+# # Plots ----
+# # plots
+# pchs <- c(1,15,24)
+# cols <- c("darkred","darkred","darkred","navyblue","navyblue","navyblue")
+# 
+# # tutorial on how to annotate a la latex in R plots
+# # https://data.library.virginia.edu/mathematical-annotation-in-r/
+# {
+#   par(mar = c(5,5,4,1))
+#   plot(detour_qfit_at
+#        ,main = "Detour, quality of fit"
+#        ,pch = pchs
+#        ,col = cols
+#        ,xlab = expression(r^2)
+#        ,ylab = expression(delta)
+#        ,cex.lab = 1.4
+#        ,ylim = c(1.155,1.3)
+#        ,cex.axis = 1.2
+#        ,cex = 1.4
+#   )
+#   legend(x = .859
+#          ,y = 1.285
+#          ,title = "Centroid"
+#          ,pch = pchs
+#          ,legend = c("geom","commute","network")
+#          ,bty = "n"
+#   )
+#   legend(x = .859
+#          ,y = 1.24
+#          ,title = "Network"
+#          ,legend = c("OSM","OS")
+#          ,fill = unique(cols)
+#          ,col = unique(cols)
+#          ,bty = "n"
+#   )
+#   # legend(y = 1.21
+#   #        ,x = 0.859
+#   #        ,legend = "mean detour"
+#   #        ,lty = 2
+#   #        ,lwd = 2
+#   #        ,bty = "n"
+#   #        )
+#   
+#   abline(h =  c(1.1896,1.2918)
+#          ,col = c("darkred","navyblue")
+#         ,lty = 2
+#         ,lwd = 2)
+# }
+# 

@@ -23,6 +23,8 @@ library(units)
 # distance matrix
 # different algorithms if possible. 
 
+source('scripts/network/cppr_network_setup.R')
+
 # loading the edges
 london_edges_dt <- st_read("RC_outputs/london_all/london_all.gpkg", layer = "edges") |> 
   as.data.table()
@@ -47,13 +49,6 @@ london_msoa[,c("centr_geom","workplace_centr","pop_weight_geom","net_centr","geo
 
 network_cppr <- rlist::list.load("benchmarks/cppr_networks/osm_all.rds")
 
-# network_cppr <- network_cppr |> cpp_simplify()
-
-# network_cppr |> rlist::list.save('cppr_networks/cppr_all.rds')
-
-# cppr_nodes <- find_nearest_node_on_graph(network_cppr$coords
-#                                          ,london_msoa[,"centr_geom"] |> st_as_sf(wkt=1,crs=4326))
-
 nodes <- rlist::list.load('benchmarks/centroids.rds')
 
 cppr_nodes <- nodes$osm_all_geom$from
@@ -63,9 +58,10 @@ network_cppr_ch <- cpp_contract(network_cppr)
 ## 
 dodgr_cycle <- dodgr::weight_streetnet(london_edges_dt |> st_as_sf()
                                        ,wt_profile = "bicycle")
-dodgr_cycle <- dodgr::dodgr_cycle[dodgr_cycle$component==1,]
 
-dodgr_cycle |> rlist::list.save("benchmarks/native_networks/dodgr_cycle.rds")
+dodgr_cycle <- dodgr_cycle[dodgr_cycle$component==1,]
+
+dodgr_cycle |> rlist::list.save("Benchmarks/native_networks/dodgr_cycle.rds")
 
 # dodgr_cycle <- list.load("cppr_networks/dodgr_cycle.rds")
 
@@ -114,7 +110,7 @@ from_ind <- dodgr::match_points_to_graph(dodgr_cycle, from_xy, connected = TRUE)
 
 # change the following parameters and comment out based on whatever you want to benchmarks
 x <- sample(1:983,10)
-parallel <- TRUE
+parallel <- FALSE
 
 # RcppParallel::defaultNumThreads()
 RcppParallel::setThreadOptions(numThreads = 1)
@@ -164,7 +160,12 @@ benchmark_packages_dist_matrix_speed <- microbenchmark(
   ,times = 10
 )
 
-print(benchmark_packages_dist_matrix_speed)
+
+benchmark_packages_dist_matrix_speed |> rlist::list.save('Benchmarks/routing_benchmark.rds')
+
+class(benchmark_packages_dist_matrix_speed)
+
+print(benchmark_packages_dist_matrix_speed, unit = 's')
 
 # benchmark_packages_dist_matrix_speed
 
